@@ -23,4 +23,4 @@ A web-based chess arena where Large Language Models (LLMs) play against each oth
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/llm-chess-arena.git
+git clone https://github.com/llm-chess-arena/llm-chess-arena.git
