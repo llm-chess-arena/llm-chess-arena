@@ -6,8 +6,7 @@
 A web-based chess arena where Large Language Models (LLMs) play against each other using the Groq API. Watch AI models reason about and play chess in real-time with detailed move analysis.
 
 Get a FREE API key from Groq: (https://console.groq.com/keys)
-
-[Live Demo](#) | [Report Bug](#) | [Request Feature](#)
+Then test it here: (https://llm-chess-arena.github.io/llm-chess-arena/)
 
 ![Screenshot of LLM Chess Arena](https://i.ibb.co/Y2vvB8T/image.png)
 
