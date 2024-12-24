@@ -7,7 +7,7 @@ A web-based chess arena where Large Language Models (LLMs) play against each oth
 
 [Live Demo](#) | [Report Bug](#) | [Request Feature](#)
 
-![Screenshot of LLM Chess Arena](/api/placeholder/800/400)
+![Screenshot of LLM Chess Arena](https://i.ibb.co/Y2vvB8T/image.png)
 
 ## Features
 
