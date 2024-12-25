@@ -20,17 +20,26 @@
            <div class="settings-section">
                <h3>White Player</h3>
                <div class="input-group">
-                   <label>API Key:</label>
-                   <input type="password" id="apiKey1" placeholder="API Key">
+                   <label>Player Type:</label>
+                   <select id="playerType1">
+                       <option value="human">Human</option>
+                       <option value="ai">AI</option>
+                   </select>
                </div>
-               <div class="input-group">
-                   <label>Model:</label>
-                   <select id="model1"></select>
-               </div>
-               <div class="input-group">
-                   <label>Temperature:</label>
-                   <input type="range" id="temp1" min="0.1" max="1.0" step="0.1" value="0.7">
-                   <span id="temp1Value">0.7</span>
+               <div class="ai-settings" id="aiSettings1" style="display: none;">
+                   <div class="input-group">
+                       <label>API Key:</label>
+                       <input type="password" id="apiKey1" placeholder="API Key">
+                   </div>
+                   <div class="input-group">
+                       <label>Model:</label>
+                       <select id="model1"></select>
+                   </div>
+                   <div class="input-group">
+                       <label>Temperature:</label>
+                       <input type="range" id="temp1" min="0.1" max="1.0" step="0.1" value="0.7">
+                       <span id="temp1Value">0.7</span>
+                   </div>
                </div>
            </div>
 
@@ -38,17 +47,26 @@
            <div class="settings-section">
                <h3>Black Player</h3>
                <div class="input-group">
-                   <label>API Key:</label>
-                   <input type="password" id="apiKey2" placeholder="API Key">
+                   <label>Player Type:</label>
+                   <select id="playerType2">
+                       <option value="human">Human</option>
+                       <option value="ai">AI</option>
+                   </select>
                </div>
-               <div class="input-group">
-                   <label>Model:</label>
-                   <select id="model2"></select>
-               </div>
-               <div class="input-group">
-                   <label>Temperature:</label>
-                   <input type="range" id="temp2" min="0.1" max="1.0" step="0.1" value="0.7">
-                   <span id="temp2Value">0.7</span>
+               <div class="ai-settings" id="aiSettings2" style="display: none;">
+                   <div class="input-group">
+                       <label>API Key:</label>
+                       <input type="password" id="apiKey2" placeholder="API Key">
+                   </div>
+                   <div class="input-group">
+                       <label>Model:</label>
+                       <select id="model2"></select>
+                   </div>
+                   <div class="input-group">
+                       <label>Temperature:</label>
+                       <input type="range" id="temp2" min="0.1" max="1.0" step="0.1" value="0.7">
+                       <span id="temp2Value">0.7</span>
+                   </div>
                </div>
            </div>
 
@@ -295,20 +313,130 @@ class ChessGame {
        this.autoPlayInterval = null;
        this.isProcessingMove = false;
        this.debugMode = false;
+       this.selectedPiece = null;
+       this.legalMoves = new Map();
 
        this.initializeBoard();
        this.initializeControls();
        this.populateModelDropdowns();
        this.loadSettings();
+       this.updatePlayerControls();
    }
 
    initializeBoard() {
-       this.board = Chessboard('board', {
+       const config = {
            position: 'start',
            showNotation: true,
-           pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
-       });
+           pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
+           draggable: true,
+           onDragStart: (source, piece) => this.onDragStart(source, piece),
+           onDrop: (source, target) => this.onDrop(source, target),
+           onMouseoutSquare: () => this.onMouseoutSquare(),
+           onMouseoverSquare: (square) => this.onMouseoverSquare(square),
+           onSnapEnd: () => this.board.position(this.game.fen())
+       };
+
+       this.board = Chessboard('board', config);
        $(window).resize(() => this.board.resize());
+   }
+
+   onDragStart(source, piece) {
+       const playerType = this.currentPlayer === 'white' ? 
+           document.getElementById('playerType1').value :
+           document.getElementById('playerType2').value;
+
+       // Only allow the human player to move their pieces
+       if (playerType !== 'human') return false;
+
+       // Don't allow moving pieces if the game is over
+       if (this.game.game_over()) return false;
+
+       // Only allow the current player to move their pieces
+       if ((this.currentPlayer === 'white' && piece.search(/^b/) !== -1) ||
+           (this.currentPlayer === 'black' && piece.search(/^w/) !== -1)) {
+           return false;
+       }
+
+       return true;
+   }
+
+   onMouseoverSquare(square) {
+       const playerType = this.currentPlayer === 'white' ? 
+           document.getElementById('playerType1').value :
+           document.getElementById('playerType2').value;
+
+       if (playerType !== 'human') return;
+
+       // Get list of possible moves for this square
+       const moves = this.game.moves({
+           square: square,
+           verbose: true
+       });
+
+       // Exit if there are no moves available for this square
+       if (moves.length === 0) return;
+
+       // Highlight the square they moused over
+       this.greySquare(square);
+
+       // Highlight the possible squares for this piece
+       for (let i = 0; i < moves.length; i++) {
+           this.greySquare(moves[i].to);
+       }
+   }
+
+   onMouseoutSquare() {
+       $('.square-55d63').css('background', '');
+   }
+
+   greySquare(square) {
+       const $square = $('.square-' + square);
+       const background = $square.hasClass('black-3c85d') ? '#696969' : '#a9a9a9';
+       $square.css('background', background);
+   }
+
+   onDrop(source, target) {
+       const playerType = this.currentPlayer === 'white' ? 
+           document.getElementById('playerType1').value :
+           document.getElementById('playerType2').value;
+
+       if (playerType !== 'human') return 'snapback';
+
+       // Check if the move is legal
+       const move = this.game.move({
+           from: source,
+           to: target,
+           promotion: 'q' // Always promote to queen for simplicity
+       });
+
+       // If illegal move, snapback
+       if (move === null) return 'snapback';
+
+       // Log the human move
+       this.logMove({
+           move: move.san,
+           reasoning: "Human player's move"
+       });
+
+       // Update game state
+       this.currentPlayer = this.currentPlayer === 'white' ? 'black' : 'white';
+       if (this.currentPlayer === 'white') this.moveCount++;
+       this.updateStatus();
+
+       // If game is over, handle it
+       if (this.game.game_over()) {
+           this.handleGameOver();
+           return;
+       }
+
+       // If next player is AI, trigger their move
+       const nextPlayerType = this.currentPlayer === 'white' ? 
+           document.getElementById('playerType1').value :
+           document.getElementById('playerType2').value;
+
+       if (nextPlayerType === 'ai') {
+           setTimeout(() => this.makeMove(), 500);
+       }
    }
 
    populateModelDropdowns() {
@@ -352,14 +480,34 @@ class ChessGame {
            });
        });
 
+       ['playerType1', 'playerType2'].forEach(id => {
+           document.getElementById(id).addEventListener('change', () => {
+               this.updatePlayerControls();
+               this.saveSettings();
+           });
+       });
+
        ['apiKey1', 'model1', 'temp1', 'apiKey2', 'model2', 'temp2'].forEach(id => {
            document.getElementById(id).addEventListener('change', () => this.saveSettings());
        });
    }
 
+   updatePlayerControls() {
+       ['1', '2'].forEach(player => {
+           const playerType = document.getElementById(`playerType${player}`).value;
+           const aiSettings = document.getElementById(`aiSettings${player}`);
+           aiSettings.style.display = playerType === 'ai' ? 'block' : 'none';
+       });
+
+       // Update "Make Move" button visibility based on current player type
+       const currentPlayerNum = this.currentPlayer === 'white' ? '1' : '2';
+       const currentPlayerType = document.getElementById(`playerType${currentPlayerNum}`).value;
+       document.getElementById('stepBtn').style.display = currentPlayerType === 'ai' ? 'inline-block' : 'none';
+   }
+
    loadSettings() {
        const settings = JSON.parse(localStorage.getItem('chessSettings') || '{}');
-       ['model1', 'temp1', 'model2', 'temp2'].forEach(key => {
+       ['playerType1', 'model1', 'temp1', 'playerType2', 'model2', 'temp2'].forEach(key => {
            const element = document.getElementById(key);
            if (settings[key]) {
                element.value = settings[key];
@@ -368,26 +516,37 @@ class ChessGame {
                }
            }
        });
+       this.updatePlayerControls();
    }
 
    saveSettings() {
        const settings = {
+           playerType1: document.getElementById('playerType1').value,
            model1: document.getElementById('model1').value,
            temp1: document.getElementById('temp1').value,
+           playerType2: document.getElementById('playerType2').value,
            model2: document.getElementById('model2').value,
            temp2: document.getElementById('temp2').value
        };
        localStorage.setItem('chessSettings', JSON.stringify(settings));
+       this.updatePlayerControls();
    }
 
-
-    async makeMove() {
+   async makeMove() {
        if (this.isProcessingMove || this.game.game_over()) return false;
        this.isProcessingMove = true;
        document.getElementById('stepBtn').disabled = true;
 
        try {
            const player = this.currentPlayer === 'white' ? 1 : 2;
+           const playerType = document.getElementById(`playerType${player}`).value;
+
+           if (playerType === 'human') {
+               this.isProcessingMove = false;
+               document.getElementById('stepBtn').disabled = false;
+               return false;
+           }
+
            const modelName = document.getElementById(`model${player}`).value;
            const apiKey = document.getElementById(`apiKey${player}`).value;
            const temperature = document.getElementById(`temp${player}`).value;
@@ -418,13 +577,23 @@ class ChessGame {
                return false;
            }
 
-           return true;
+           // If next player is also AI and auto-play is enabled, continue
+           const nextPlayerType = this.currentPlayer === 'white' ? 
+               document.getElementById('playerType1').value :
+               document.getElementById('playerType2').value;
+
+           if (nextPlayerType === 'ai' && document.getElementById('autoPlay').checked) {
+               return true;
+           }
+
+           return false;
        } catch (error) {
            this.logError(error);
            return false;
        } finally {
            this.isProcessingMove = false;
            document.getElementById('stepBtn').disabled = false;
+           this.updatePlayerControls();
        }
    }
 
@@ -437,7 +606,14 @@ class ChessGame {
                    document.getElementById('autoPlay').checked = false;
                    return;
                }
-               await this.makeMove();
+               
+               const playerType = this.currentPlayer === 'white' ? 
+                   document.getElementById('playerType1').value :
+                   document.getElementById('playerType2').value;
+
+               if (playerType === 'ai') {
+                   await this.makeMove();
+               }
            }, delay);
        } else if (this.autoPlayInterval) {
            clearInterval(this.autoPlayInterval);
@@ -459,6 +635,13 @@ class ChessGame {
        this.isProcessingMove = false;
        this.logDebug('Starting new game');
        this.updateStatus();
+       this.updatePlayerControls();
+
+       // If white player is AI, trigger their move
+       const whitePlayerType = document.getElementById('playerType1').value;
+       if (whitePlayerType === 'ai') {
+           setTimeout(() => this.makeMove(), 500);
+       }
    }
 
    handleGameOver() {
@@ -488,6 +671,7 @@ class ChessGame {
        else if (this.game.in_draw()) status = 'Draw';
        else if (this.game.in_stalemate()) status = 'Stalemate';
        document.getElementById('gameStatus').textContent = `Status: ${status}`;
+       this.updatePlayerControls();
    }
 
    logMove(moveData) {
@@ -533,7 +717,6 @@ class ChessGame {
 
 window.addEventListener('load', () => {
    window.game = new ChessGame();
-});
-   </script>
+});</script>
 </body>
 </html>
