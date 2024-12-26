@@ -141,6 +141,13 @@ JSON:
 - DO NOT WRITE ANYTHING BEFORE THE JSON OR AFTER THE JSON.
 - YOU ONLY OUTPUT VALID JSON CODE. 
 
+RESPONSE FORMAT REQUIREMENTS:
+- You MUST return ONLY a valid JSON object
+- DO NOT include any text before or after the JSON
+- DO NOT wrap the JSON in code blocks or markdown
+- DO NOT add any explanatory text
+- The response should start with { and end with }
+
 Previous game moves and current position will be provided.
 Respond with a JSON object containing your move and reasoning:
 {
@@ -313,7 +320,11 @@ class GeminiProvider extends ChessModelProvider {
                 throw new Error('Invalid response format from Gemini API');
             }
 
-            const moveData = JSON.parse(data.candidates[0].content.parts[0].text);
+            let responseText = data.candidates[0].content.parts[0].text;
+// Remove markdown code blocks and clean the text
+responseText = responseText.replace(/```json\s*|\s*```/g, '').trim();
+const moveData = JSON.parse(responseText);
+
             return this.validateResponse(moveData, legalMoves);
         });
     }
