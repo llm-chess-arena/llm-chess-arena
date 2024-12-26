@@ -216,17 +216,16 @@ Respond with a JSON containing your chosen move and reasoning.`;
 }
 
 class OpenAIProvider extends ChessModelProvider {
-   constructor(apiKey, model, temperature, baseUrl = 'https://api.openai.com') {
+   constructor(apiKey, model, temperature) {
        super();
        this.apiKey = apiKey;
        this.model = model;
        this.temperature = temperature;
-       this.baseUrl = baseUrl;
    }
 
    async makeMove({ fen, history, legalMoves }) {
        return this.retryWithBackoff(async () => {
-           const response = await fetch(`${this.baseUrl}/v1/chat/completions`, {
+           const response = await fetch('https://api.openai.com/v1/chat/completions', {
                method: 'POST',
                headers: {
                    'Authorization': `Bearer ${this.apiKey}`,
@@ -263,6 +262,68 @@ Respond with a JSON containing your chosen move and reasoning.`;
    }
 }
 
+class GeminiProvider extends ChessModelProvider {
+    constructor(apiKey, model, temperature) {
+        super();
+        this.apiKey = apiKey;
+        this.model = model;
+        this.temperature = temperature;
+    }
+
+    async makeMove({ fen, history, legalMoves }) {
+        return this.retryWithBackoff(async () => {
+            const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': this.apiKey
+                },
+                body: JSON.stringify({
+                    contents: [
+                        {
+                            role: 'user',
+                            parts: [{ text: SYSTEM_PROMPT }]
+                        },
+                        {
+                            role: 'user',
+                            parts: [{ text: this.formatPrompt(fen, history, legalMoves) }]
+                        }
+                    ],
+                    generationConfig: {
+                        temperature: parseFloat(this.temperature),
+                        topP: 0.95,
+                        topK: 40,
+                        maxOutputTokens: 8192,
+                        stopSequences: []
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Gemini API Error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+                throw new Error('Invalid response format from Gemini API');
+            }
+
+            const moveData = JSON.parse(data.candidates[0].content.parts[0].text);
+            return this.validateResponse(moveData, legalMoves);
+        });
+    }
+
+    formatPrompt(fen, history, legalMoves) {
+        return `Current position (FEN): ${fen}
+Game history: ${history || 'Opening position'}
+Legal moves: ${legalMoves.join(', ')}
+
+Choose a legal move from the provided list.
+Your move MUST match exactly one of the legal moves shown above.
+Respond with a JSON containing your chosen move and reasoning.`;
+    }
+}
+
 class ChessProviderFactory {
    static MODELS = {
        'Groq LLaMa 3.3 70B Versatile': {
@@ -275,15 +336,14 @@ class ChessProviderFactory {
            modelId: 'llama-3.3-70b-specdec',
            tempRange: { min: 0.1, max: 1.0 }
        },
-       'OpenAI GPT-4': {
+       'OpenAI Gpt-4': {
            provider: 'openai',
            modelId: 'gpt-4',
            tempRange: { min: 0.1, max: 1.0 }
        },
        'Gemini Pro': {
-           provider: 'openai',
+           provider: 'gemini',
            modelId: 'gemini-2.0-flash-exp',
-           baseUrl: 'https://generativelanguage.googleapis.com/v1beta/models',
            tempRange: { min: 0.1, max: 1.0 }
        }
    };
@@ -296,7 +356,9 @@ class ChessProviderFactory {
            case 'groq':
                return new GroqProvider(apiKey, config.modelId, temperature);
            case 'openai':
-               return new OpenAIProvider(apiKey, config.modelId, temperature, config.baseUrl);
+               return new OpenAIProvider(apiKey, config.modelId, temperature);
+           case 'gemini':
+               return new GeminiProvider(apiKey, config.modelId, temperature);
            default:
                throw new Error(`Unknown provider: ${config.provider}`);
        }
@@ -471,6 +533,34 @@ class ChessGame {
        document.getElementById(`temp${player}Value`).textContent = tempInput.value;
    }
 
+   initializeControls() {
+       document.getElementById('startBtn').addEventListener('click', () => this.startNewGame());
+       document.getElementById('stepBtn').addEventListener('click', () => this.makeMove());
+       document.getElementById('copyPgn').addEventListener('click', () => this.copyPgnToClipboard());
+       document.getElementById('autoPlay').addEventListener('change', (e) => this.toggleAutoPlay(e.target.checked));
+       document.getElementById('debugMode').addEventListener('change', (e) => {
+           this.debugMode = e.target.checked;
+           this.logDebug('Debug mode ' + (this.debugMode ? 'enabled' : 'disabled'));
+       });
+       
+       ['temp1', 'temp2'].forEach(id => {
+           document.getElementById(id).addEventListener('input', (e) => {
+               document.getElementById(id + 'Value').textContent = e.target.value;
+           });
+       });
+
+       ['playerType1', 'playerType2'].forEach(id => {
+           document.getElementById(id).addEventListener('change', () => {
+               this.updatePlayerControls();
+               this.saveSettings();
+           });
+       });
+
+       ['apiKey1', 'model1', 'temp1', 'apiKey2', 'model2', 'temp2'].forEach(id => {
+           document.getElementById(id).addEventListener('change', () => this.saveSettings());
+       });
+   }
+
    updatePlayerControls() {
        ['1', '2'].forEach(player => {
            const playerType = document.getElementById(`playerType${player}`).value;
@@ -481,7 +571,7 @@ class ChessGame {
        // Update "Make Move" button visibility based on current player type
        const currentPlayerNum = this.currentPlayer === 'white' ? '1' : '2';
        const currentPlayerType = document.getElementById(`playerType${currentPlayerNum}`).value;
-       document.getElementById('stepBtn').style.display = currentPlayerType === 'ai' ? 'inline-block' : 'none';
+       document.getElementById('stepBtn').disabled = currentPlayerType !== 'ai' || this.game.game_over();
    }
 
    loadSettings() {
@@ -591,7 +681,11 @@ class ChessGame {
                    document.getElementById('playerType2').value;
 
                if (playerType === 'ai') {
-                   await this.makeMove();
+                   const shouldContinue = await this.makeMove();
+                   if (!shouldContinue) {
+                       this.toggleAutoPlay(false);
+                       document.getElementById('autoPlay').checked = false;
+                   }
                }
            }, delay);
        } else if (this.autoPlayInterval) {
@@ -696,32 +790,7 @@ class ChessGame {
 
 window.addEventListener('load', () => {
    window.game = new ChessGame();
-});</script>
+});
+   </script>
 </body>
 </html>
-       document.getElementById('startBtn').addEventListener('click', () => this.startNewGame());
-       document.getElementById('stepBtn').addEventListener('click', () => this.makeMove());
-       document.getElementById('copyPgn').addEventListener('click', () => this.copyPgnToClipboard());
-       document.getElementById('autoPlay').addEventListener('change', (e) => this.toggleAutoPlay(e.target.checked));
-       document.getElementById('debugMode').addEventListener('change', (e) => {
-           this.debugMode = e.target.checked;
-           this.logDebug('Debug mode ' + (this.debugMode ? 'enabled' : 'disabled'));
-       });
-       
-       ['temp1', 'temp2'].forEach(id => {
-           document.getElementById(id).addEventListener('input', (e) => {
-               document.getElementById(id + 'Value').textContent = e.target.value;
-           });
-       });
-
-       ['playerType1', 'playerType2'].forEach(id => {
-           document.getElementById(id).addEventListener('change', () => {
-               this.updatePlayerControls();
-               this.saveSettings();
-           });
-       });
-
-       ['apiKey1', 'model1', 'temp1', 'apiKey2', 'model2', 'temp2'].forEach(id => {
-           document.getElementById(id).addEventListener('change', () => this.saveSettings());
-       });
-   }
