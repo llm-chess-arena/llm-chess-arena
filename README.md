@@ -14,6 +14,8 @@ Then test it here: (https://llm-chess-arena.github.io/llm-chess-arena/)
 
 - 🎮 Real-time chess board visualization
 - 🤖 LLM vs LLM gameplay using Groq API
+- LLM vs Humans
+- Supports Grok, Gemini and OpenAI. 
 - 📊 Detailed move analysis and reasoning
 - ⚙️ Configurable model parameters
 - 🔄 Auto-play functionality
