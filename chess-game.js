@@ -1,3 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+   <title>LLM Chess Arena</title>
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
+   <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+   <h1>LLM Chess Arena</h1>
+   
+   <div class="game-container">
+       <div class="controls-panel">
+           <div class="game-controls">
+               <button id="startBtn">Start New Game</button>
+               <button id="stepBtn" disabled>Make Move</button>
+               <button id="copyPgn">Copy PGN</button>
+           </div>
+
+           <!-- White Player Settings -->
+           <div class="settings-section">
+               <h3>White Player</h3>
+               <div class="input-group">
+                   <label>Player Type:</label>
+                   <select id="playerType1">
+                       <option value="human">Human</option>
+                       <option value="ai">AI</option>
+                   </select>
+               </div>
+               <div class="ai-settings" id="aiSettings1" style="display: none;">
+                   <div class="input-group">
+                       <label>API Key:</label>
+                       <input type="password" id="apiKey1" placeholder="API Key">
+                   </div>
+                   <div class="input-group">
+                       <label>Model:</label>
+                       <select id="model1"></select>
+                   </div>
+                   <div class="input-group">
+                       <label>Temperature:</label>
+                       <input type="range" id="temp1" min="0.1" max="1.0" step="0.1" value="0.7">
+                       <span id="temp1Value">0.7</span>
+                   </div>
+               </div>
+           </div>
+
+           <!-- Black Player Settings -->
+           <div class="settings-section">
+               <h3>Black Player</h3>
+               <div class="input-group">
+                   <label>Player Type:</label>
+                   <select id="playerType2">
+                       <option value="human">Human</option>
+                       <option value="ai">AI</option>
+                   </select>
+               </div>
+               <div class="ai-settings" id="aiSettings2" style="display: none;">
+                   <div class="input-group">
+                       <label>API Key:</label>
+                       <input type="password" id="apiKey2" placeholder="API Key">
+                   </div>
+                   <div class="input-group">
+                       <label>Model:</label>
+                       <select id="model2"></select>
+                   </div>
+                   <div class="input-group">
+                       <label>Temperature:</label>
+                       <input type="range" id="temp2" min="0.1" max="1.0" step="0.1" value="0.7">
+                       <span id="temp2Value">0.7</span>
+                   </div>
+               </div>
+           </div>
+
+           <div class="auto-play-controls">
+               <div class="input-group">
+                   <label>
+                       <input type="checkbox" id="autoPlay"> Auto Play
+                   </label>
+               </div>
+               <div class="input-group">
+                   <label>Move Delay (ms):</label>
+                   <input type="number" id="moveDelay" value="2000" min="500">
+               </div>
+               <div class="input-group">
+                   <label>Max Retries:</label>
+                   <input type="number" id="maxRetries" value="3" min="1" max="5">
+               </div>
+           </div>
+
+           <div class="debug-panel">
+               <div class="input-group">
+                   <label>
+                       <input type="checkbox" id="debugMode"> Debug Mode
+                   </label>
+               </div>
+           </div>
+       </div>
+
+       <div class="board-container">
+           <div id="board"></div>
+           <div class="status-bar">
+               <span id="turnIndicator">Turn: White</span>
+               <span id="moveIndicator">Move: 1</span>
+               <span id="gameStatus">Status: In Progress</span>
+           </div>
+       </div>
+
+       <div class="log-panel">
+           <h3>Move History & Analysis</h3>
+           <div class="reasoning-log" id="reasoningLog"></div>
+       </div>
+   </div>
+
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+   <script src="chess-game.js"></script>
+</body>
+</html>
+```
+
+```javascript
+// chess-game.js
+
 const SYSTEM_PROMPT = `You are playing a game of chess. You must analyze the position and choose a valid move from the legal moves available.
 
 CRITICAL REQUIREMENTS:
@@ -30,7 +153,14 @@ RESPONSE FORMAT REQUIREMENTS:
 - DO NOT include any text before or after the JSON
 - DO NOT wrap the JSON in code blocks or markdown
 - DO NOT add any explanatory text
-- The response should start with { and end with }`;
+- The response should start with { and end with }
+
+Previous game moves and current position will be provided.
+Respond with a JSON object containing your move and reasoning:
+{
+   "move": "<your chosen move in EXACT SAN format>",
+   "reasoning": "<your analysis and explanation>"
+}`;
 
 class ChessModelProvider {
    async makeMove({ fen, history, legalMoves }) {
@@ -133,55 +263,6 @@ class OpenAIProvider extends ChessModelProvider {
 
            if (!response.ok) {
                throw new Error(`OpenAI API Error: ${response.status} ${response.statusText}`);
-           }
-
-           const data = await response.json();
-           return this.validateResponse(JSON.parse(data.choices[0].message.content), legalMoves);
-       });
-   }
-
-   formatPrompt(fen, history, legalMoves) {
-       return `Current position (FEN): ${fen}
-Game history: ${history || 'Opening position'}
-Legal moves: ${legalMoves.join(', ')}
-
-Choose a legal move from the provided list.
-Your move MUST match exactly one of the legal moves shown above.
-Respond with a JSON containing your chosen move and reasoning.`;
-   }
-}
-
-class AnthropicProvider extends ChessModelProvider {
-   constructor(apiKey, model, temperature) {
-       super();
-       this.apiKey = apiKey;
-       this.model = model;
-       this.temperature = temperature;
-   }
-
-   async makeMove({ fen, history, legalMoves }) {
-       return this.retryWithBackoff(async () => {
-           const response = await fetch('https://api.anthropic.com/v1/messages', {
-               method: 'POST',
-               headers: {
-                   'anthropic-beta': 'messages-2024-01-01',
-                   'anthropic-version': '2023-06-01',
-                   'x-api-key': this.apiKey,
-                   'Content-Type': 'application/json'
-               },
-               body: JSON.stringify({
-                   model: this.model,
-                   max_tokens: 8192,
-                   temperature: parseFloat(this.temperature),
-                   messages: [
-                       { role: "system", content: SYSTEM_PROMPT },
-                       { role: "user", content: this.formatPrompt(fen, history, legalMoves) }
-                   ]
-               })
-           });
-
-           if (!response.ok) {
-               throw new Error(`Anthropic API Error: ${response.status} ${response.statusText}`);
            }
 
            const data = await response.json();
@@ -338,11 +419,6 @@ class ChessProviderFactory {
            provider: 'grok',
            modelId: 'grok-beta',
            tempRange: { min: 0.1, max: 1.0 }
-       },
-       'Anthropic Claude-3 Sonnet': {
-           provider: 'anthropic',
-           modelId: 'claude-3-sonnet-20240229',
-           tempRange: { min: 0.1, max: 1.0 }
        }
    };
 
@@ -359,8 +435,6 @@ class ChessProviderFactory {
                return new GeminiProvider(apiKey, config.modelId, temperature);
            case 'grok':
                return new GrokProvider(apiKey, config.modelId, temperature);
-           case 'anthropic':
-               return new AnthropicProvider(apiKey, config.modelId, temperature);
            default:
                throw new Error(`Unknown provider: ${config.provider}`);
        }
@@ -684,115 +758,114 @@ class ChessGame {
 
                if (playerType === 'ai') {
                    const shouldContinue = await this.makeMove();
-                   
                    if (!shouldContinue) {
                        this.toggleAutoPlay(false);
                        document.getElementById('autoPlay').checked = false;
                    }
                }
            }, delay);
+       } else if (this.autoPlayInterval) {
+           clearInterval(this.autoPlayInterval);
+           this.autoPlayInterval = null;
+       }
+   }
 
-        } else if (this.autoPlayInterval) {
-            clearInterval(this.autoPlayInterval);
-            this.autoPlayInterval = null;
-        }
-    }
- 
-    startNewGame() {
-        if (this.autoPlayInterval) {
-            this.toggleAutoPlay(false);
-        }
-        this.game = new Chess();
-        this.board.position('start');
-        this.currentPlayer = 'white';
-        this.moveCount = 1;
-        document.getElementById('reasoningLog').innerHTML = '';
-        document.getElementById('stepBtn').disabled = false;
-        document.getElementById('autoPlay').checked = false;
-        this.isProcessingMove = false;
-        this.logDebug('Starting new game');
-        this.updateStatus();
-        this.updatePlayerControls();
- 
-        // If white player is AI, trigger their move
-        const whitePlayerType = document.getElementById('playerType1').value;
-        if (whitePlayerType === 'ai') {
-            setTimeout(() => this.makeMove(), 500);
-        }
-    }
- 
-    handleGameOver() {
-        this.toggleAutoPlay(false);
-        document.getElementById('autoPlay').checked = false;
-        document.getElementById('stepBtn').disabled = true;
-        let result = '';
-        if (this.game.in_checkmate()) {
-            result = `Checkmate! ${this.currentPlayer === 'white' ? 'Black' : 'White'} wins!`;
-        } else if (this.game.in_draw()) {
-            result = "Game ended in a draw!";
-        } else if (this.game.in_stalemate()) {
-            result = "Game ended in stalemate!";
-        }
-        
-        this.logMessage(result);
-        this.logDebug(`Game over: ${result}`);
-        this.updateStatus();
-    }
- 
-    updateStatus() {
-        document.getElementById('turnIndicator').textContent = `Turn: ${this.currentPlayer.charAt(0).toUpperCase() + this.currentPlayer.slice(1)}`;
-        document.getElementById('moveIndicator').textContent = `Move: ${this.moveCount}`;
-        let status = 'In Progress';
-        if (this.game.in_checkmate()) status = 'Checkmate';
-        else if (this.game.in_check()) status = 'Check';
-        else if (this.game.in_draw()) status = 'Draw';
-        else if (this.game.in_stalemate()) status = 'Stalemate';
-        document.getElementById('gameStatus').textContent = `Status: ${status}`;
-        this.updatePlayerControls();
-    }
- 
-    logMove(moveData) {
-        const reasoningLog = document.getElementById('reasoningLog');
-        const entry = document.createElement('div');
-        entry.className = `move-entry ${this.currentPlayer}`;
-        entry.innerHTML = `
-            <strong>${this.currentPlayer.charAt(0).toUpperCase() + this.currentPlayer.slice(1)} Move ${this.moveCount}:</strong> ${moveData.move}<br>
-            <strong>Reasoning:</strong> ${moveData.reasoning}
-        `;
-        reasoningLog.insertBefore(entry, reasoningLog.firstChild);
-    }
- 
-    logError(error) {
-        const entry = document.createElement('div');
-        entry.className = 'move-entry error';
-        entry.innerHTML = `<strong>Error:</strong> ${error.message}`;
-        document.getElementById('reasoningLog').insertBefore(entry, reasoningLog.firstChild);
-    }
- 
-    logMessage(message) {
-        const entry = document.createElement('div');
-        entry.className = 'move-entry';
-        entry.innerHTML = `<strong>Game:</strong> ${message}`;
-        document.getElementById('reasoningLog').insertBefore(entry, reasoningLog.firstChild);
-    }
- 
-    logDebug(message) {
-        if (!this.debugMode) return;
-        const entry = document.createElement('div');
-        entry.className = 'move-entry debug';
-        entry.innerHTML = `<strong>[DEBUG]:</strong> ${message}`;
-        document.getElementById('reasoningLog').insertBefore(entry, reasoningLog.firstChild);
-    }
- 
-    copyPgnToClipboard() {
-        const pgn = this.game.pgn();
-        navigator.clipboard.writeText(pgn)
-            .then(() => this.logMessage('PGN copied to clipboard'))
-            .catch(error => this.logError('Failed to copy PGN'));
-    }
- }
- 
- window.addEventListener('load', () => {
-    window.game = new ChessGame();
- });
- 
+   startNewGame() {
+       if (this.autoPlayInterval) {
+           this.toggleAutoPlay(false);
+       }
+       this.game = new Chess();
+       this.board.position('start');
+       this.currentPlayer = 'white';
+       this.moveCount = 1;
+       document.getElementById('reasoningLog').innerHTML = '';
+       document.getElementById('stepBtn').disabled = false;
+       document.getElementById('autoPlay').checked = false;
+       this.isProcessingMove = false;
+       this.logDebug('Starting new game');
+       this.updateStatus();
+       this.updatePlayerControls();
+
+       // If white player is AI, trigger their move
+       const whitePlayerType = document.getElementById('playerType1').value;
+       if (whitePlayerType === 'ai') {
+           setTimeout(() => this.makeMove(), 500);
+       }
+   }
+
+   handleGameOver() {
+       this.toggleAutoPlay(false);
+       document.getElementById('autoPlay').checked = false;
+       document.getElementById('stepBtn').disabled = true;
+       let result = '';
+       if (this.game.in_checkmate()) {
+           result = `Checkmate! ${this.currentPlayer === 'white' ? 'Black' : 'White'} wins!`;
+       } else if (this.game.in_draw()) {
+           result = "Game ended in a draw!";
+       } else if (this.game.in_stalemate()) {
+           result = "Game ended in stalemate!";
+       }
+       
+       this.logMessage(result);
+       this.logDebug(`Game over: ${result}`);
+       this.updateStatus();
+   }
+
+ ```javascript
+   updateStatus() {
+       document.getElementById('turnIndicator').textContent = `Turn: ${this.currentPlayer.charAt(0).toUpperCase() + this.currentPlayer.slice(1)}`;
+       document.getElementById('moveIndicator').textContent = `Move: ${this.moveCount}`;
+       let status = 'In Progress';
+
+       if (this.game.in_checkmate()) status = 'Checkmate';
+       else if (this.game.in_check()) status = 'Check';
+       else if (this.game.in_draw()) status = 'Draw';
+       else if (this.game.in_stalemate()) status = 'Stalemate';
+       document.getElementById('gameStatus').textContent = `Status: ${status}`;
+       this.updatePlayerControls();
+   }
+
+   logMove(moveData) {
+       const reasoningLog = document.getElementById('reasoningLog');
+       const entry = document.createElement('div');
+       entry.className = `move-entry ${this.currentPlayer}`;
+       entry.innerHTML = `
+           <strong>${this.currentPlayer.charAt(0).toUpperCase() + this.currentPlayer.slice(1)} Move ${this.moveCount}:</strong> ${moveData.move}<br>
+           <strong>Reasoning:</strong> ${moveData.reasoning}
+       `;
+       reasoningLog.insertBefore(entry, reasoningLog.firstChild);
+   }
+
+   logError(error) {
+       const entry = document.createElement('div');
+       entry.className = 'move-entry error';
+       entry.innerHTML = `<strong>Error:</strong> ${error.message}`;
+       document.getElementById('reasoningLog').insertBefore(entry, reasoningLog.firstChild);
+   }
+
+   logMessage(message) {
+       const entry = document.createElement('div');
+       entry.className = 'move-entry';
+       entry.innerHTML = `<strong>Game:</strong> ${message}`;
+       document.getElementById('reasoningLog').insertBefore(entry, reasoningLog.firstChild);
+   }
+
+   logDebug(message) {
+       if (!this.debugMode) return;
+       const entry = document.createElement('div');
+       entry.className = 'move-entry debug';
+       entry.innerHTML = `<strong>[DEBUG]:</strong> ${message}`;
+       document.getElementById('reasoningLog').insertBefore(entry, reasoningLog.firstChild);
+   }
+
+   copyPgnToClipboard() {
+       const pgn = this.game.pgn();
+       navigator.clipboard.writeText(pgn)
+           .then(() => this.logMessage('PGN copied to clipboard'))
+           .catch(error => this.logError('Failed to copy PGN'));
+   }
+}
+
+window.addEventListener('load', () => {
+   window.game = new ChessGame();
+});
