@@ -13,7 +13,7 @@ Then test it here: (https://llm-chess-arena.github.io/llm-chess-arena/)
 ## Features
 
 - 🎮 Real-time chess board visualization
-- 🤖 LLM vs LLM gameplay using Grok, Gemini and OpenAI. API
+- 🤖 LLM vs LLM gameplay using Grok, Xai, Gemini and OpenAI.
 - LLM vs Humans.
 - 📊 Detailed move analysis and reasoning
 - ⚙️ Configurable model parameters
