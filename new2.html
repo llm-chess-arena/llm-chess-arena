@@ -3,276 +3,116 @@
 <head>
    <title>LLM Chess Arena</title>
    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
-   <style>
-   /* Including the CSS directly in the HTML file */
-   body {
-       font-family: Arial, sans-serif;
-       max-width: 1400px;
-       margin: 0 auto;
-       padding: 20px;
-       background-color: #f8f9fa;
-   }
-
-   .game-container {
-       display: grid;
-       grid-template-columns: 250px 1fr 400px;
-       gap: 20px;
-   }
-
-   .controls-panel {
-       background: white;
-       padding: 20px;
-       border-radius: 8px;
-       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-   }
-
-   .board-container {
-       background: white;
-       padding: 20px;
-       border-radius: 8px;
-       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-   }
-
-   .log-panel {
-       background: white;
-       padding: 20px;
-       border-radius: 8px;
-       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-   }
-
-   .game-controls button {
-       width: 100%;
-       padding: 10px;
-       margin: 5px 0;
-       background: #007bff;
-       color: white;
-       border: none;
-       border-radius: 4px;
-       cursor: pointer;
-       transition: background-color 0.2s;
-   }
-
-   .game-controls button:hover {
-       background: #0056b3;
-   }
-
-   .game-controls button:disabled {
-       background: #ccc;
-       cursor: not-allowed;
-   }
-
-   .settings-section {
-       margin-top: 20px;
-       padding: 10px;
-       background: #f8f9fa;
-       border-radius: 4px;
-   }
-
-   .input-group {
-       margin: 10px 0;
-   }
-
-   .input-group label {
-       display: block;
-       margin-bottom: 5px;
-   }
-
-   .input-group input,
-   .input-group select {
-       width: 100%;
-       padding: 8px;
-       border: 1px solid #ced4da;
-       border-radius: 4px;
-       transition: border-color 0.2s;
-   }
-
-   .input-group input:focus,
-   .input-group select:focus {
-       outline: none;
-       border-color: #007bff;
-       box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
-   }
-
-   .status-bar {
-       margin-top: 10px;
-       padding: 10px;
-       background: #e9ecef;
-       border-radius: 4px;
-       display: flex;
-       justify-content: space-between;
-   }
-
-   .reasoning-log {
-       height: 400px;
-       overflow-y: auto;
-       padding: 10px;
-       background: #f8f9fa;
-       border: 1px solid #dee2e6;
-       border-radius: 4px;
-       margin-top: 10px;
-   }
-
-   .move-entry {
-       margin: 10px 0;
-       padding: 10px;
-       background: white;
-       border-radius: 4px;
-       box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-   }
-
-   .move-entry.white {
-       border-left: 4px solid #007bff;
-   }
-
-   .move-entry.black {
-       border-left: 4px solid #28a745;
-   }
-
-   .move-entry.error {
-       border-left: 4px solid #dc3545;
-   }
-
-   .move-entry.debug {
-       border-left: 4px solid #ffc107;
-       font-family: monospace;
-       font-size: 0.9em;
-   }
-
-   .auto-play-controls {
-       margin-top: 10px;
-       padding: 10px;
-       background: #f8f9fa;
-       border-radius: 4px;
-   }
-
-   .debug-panel {
-       margin-top: 10px;
-       padding: 10px;
-       background: #f8f9fa;
-       border-radius: 4px;
-   }
-
-   .model-settings,
-   .api-settings {
-       transition: all 0.3s ease;
-   }
-
-   @media (max-width: 1200px) {
-       .game-container {
-           grid-template-columns: 1fr;
-           gap: 15px;
-       }
-       
-       .controls-panel {
-           display: grid;
-           grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-           gap: 15px;
-       }
-   }
-   </style>
+   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-   <!-- [Previous HTML content remains exactly the same until the scripts section] -->
+   <h1>LLM Chess Arena</h1>
+   
+   <div class="game-container">
+       <div class="controls-panel">
+           <div class="game-controls">
+               <button id="startBtn">Start New Game</button>
+               <button id="stepBtn" disabled>Make Move</button>
+               <button id="copyPgn">Copy PGN</button>
+           </div>
+
+           <!-- White Player Settings -->
+           <div class="settings-section">
+               <h3>White Player</h3>
+               <div class="input-group">
+                   <label>Player Type:</label>
+                   <select id="playerType1">
+                       <option value="human">Human</option>
+                       <option value="ai">AI</option>
+                   </select>
+               </div>
+               <div class="ai-settings" id="aiSettings1" style="display: none;">
+                   <div class="input-group">
+                       <label>Model:</label>
+                       <select id="model1"></select>
+                   </div>
+                   <div class="input-group api-key-section" id="apiKeySection1" style="display: none;">
+                       <label>API Key:</label>
+                       <input type="password" id="apiKey1" placeholder="API Key">
+                   </div>
+                   <div class="input-group">
+                       <label>Temperature:</label>
+                       <input type="range" id="temp1" min="0.1" max="1.0" step="0.1" value="0.7">
+                       <span id="temp1Value">0.7</span>
+                   </div>
+               </div>
+           </div>
+
+           <!-- Black Player Settings -->
+           <div class="settings-section">
+               <h3>Black Player</h3>
+               <div class="input-group">
+                   <label>Player Type:</label>
+                   <select id="playerType2">
+                       <option value="human">Human</option>
+                       <option value="ai">AI</option>
+                   </select>
+               </div>
+               <div class="ai-settings" id="aiSettings2" style="display: none;">
+                   <div class="input-group">
+                       <label>Model:</label>
+                       <select id="model2"></select>
+                   </div>
+                   <div class="input-group api-key-section" id="apiKeySection2" style="display: none;">
+                       <label>API Key:</label>
+                       <input type="password" id="apiKey2" placeholder="API Key">
+                   </div>
+                   <div class="input-group">
+                       <label>Temperature:</label>
+                       <input type="range" id="temp2" min="0.1" max="1.0" step="0.1" value="0.7">
+                       <span id="temp2Value">0.7</span>
+                   </div>
+               </div>
+           </div>
+
+           <div class="auto-play-controls">
+               <div class="input-group">
+                   <label>
+                       <input type="checkbox" id="autoPlay"> Auto Play
+                   </label>
+               </div>
+               <div class="input-group">
+                   <label>Move Delay (ms):</label>
+                   <input type="number" id="moveDelay" value="2000" min="500">
+               </div>
+               <div class="input-group">
+                   <label>Max Retries:</label>
+                   <input type="number" id="maxRetries" value="3" min="1" max="5">
+               </div>
+           </div>
+
+           <div class="debug-panel">
+               <div class="input-group">
+                   <label>
+                       <input type="checkbox" id="debugMode"> Debug Mode
+                   </label>
+               </div>
+           </div>
+       </div>
+
+       <div class="board-container">
+           <div id="board"></div>
+           <div class="status-bar">
+               <span id="turnIndicator">Turn: White</span>
+               <span id="moveIndicator">Move: 1</span>
+               <span id="gameStatus">Status: In Progress</span>
+           </div>
+       </div>
+
+       <div class="log-panel">
+           <h3>Move History & Analysis</h3>
+           <div class="reasoning-log" id="reasoningLog"></div>
+       </div>
+   </div>
 
    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
    <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
-   
-   <script>
-   $(document).ready(function() {
-       // Function to handle player type changes
-       function handlePlayerTypeChange(playerNum) {
-           $(`#playerType${playerNum}`).on('change', function() {
-               const isAI = $(this).val() === 'ai';
-               $(`#modelSettings${playerNum}`).toggle(isAI);
-               if (!isAI) {
-                   $(`#apiSettings${playerNum}`).hide();
-                   $(`#model${playerNum}`).val('');
-               }
-           });
-       }
-
-       // Function to handle model selection changes
-       function handleModelChange(playerNum) {
-           $(`#model${playerNum}`).on('change', function() {
-               const selectedModel = $(this).val();
-               $(`#apiSettings${playerNum}`).toggle(!!selectedModel);
-           });
-       }
-
-       // Initialize handlers for both players
-       [1, 2].forEach(playerNum => {
-           handlePlayerTypeChange(playerNum);
-           handleModelChange(playerNum);
-       });
-
-       // Handle temperature range input
-       $('.input-group input[type="range"]').on('input', function() {
-           const value = $(this).val();
-           $(this).next('span').text(value);
-       });
-
-       // Optional: Add validation for API keys
-       $('.api-settings input[type="password"]').on('input', function() {
-           const apiKey = $(this).val();
-           // Add your API key validation logic here if needed
-       });
-
-       // Initialize the chess board
-       // Note: This is a basic initialization. You'll need to expand this based on your chess-game.js logic
-       let board = null;
-       const game = new Chess();
-       
-       const config = {
-           draggable: true,
-           position: 'start',
-           onDragStart: function(source, piece, position, orientation) {
-               // Add your drag start logic
-           },
-           onDrop: function(source, target) {
-               // Add your drop logic
-           },
-           onSnapEnd: function() {
-               board.position(game.fen());
-           }
-       };
-       
-       board = Chessboard('board', config);
-
-       // Handle Start New Game button
-       $('#startBtn').on('click', function() {
-           game.reset();
-           board.start();
-           // Add additional game reset logic
-       });
-
-       // Handle Step button
-       $('#stepBtn').on('click', function() {
-           // Add your step logic
-       });
-
-       // Handle Copy PGN button
-       $('#copyPgn').on('click', function() {
-           const pgn = game.pgn();
-           navigator.clipboard.writeText(pgn).then(() => {
-               alert('PGN copied to clipboard!');
-           }).catch(err => {
-               console.error('Failed to copy PGN:', err);
-           });
-       });
-
-       // Handle Auto Play checkbox
-       $('#autoPlay').on('change', function() {
-           const isAutoPlay = $(this).is(':checked');
-           // Add your auto play logic
-       });
-
-       // Handle Debug Mode checkbox
-       $('#debugMode').on('change', function() {
-           const isDebugMode = $(this).is(':checked');
-           // Add your debug mode logic
-       });
-   });
-   </script>
+   <script src="chess-game.js"></script>
 </body>
 </html>
