@@ -26,14 +26,23 @@
                        <option value="ai">AI</option>
                    </select>
                </div>
-               <div class="ai-settings" id="aiSettings1" style="display: none;">
+               <!-- Model selection shows up when AI is selected -->
+               <div class="model-settings" id="modelSettings1" style="display: none;">
                    <div class="input-group">
                        <label>Model:</label>
-                       <select id="model1"></select>
+                       <select id="model1">
+                           <option value="">Select a model...</option>
+                           <option value="gpt-4">GPT-4</option>
+                           <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                           <option value="claude-2">Claude 2</option>
+                       </select>
                    </div>
-                   <div class="input-group api-key-section" id="apiKeySection1" style="display: none;">
+               </div>
+               <!-- API key section shows up only after model is selected -->
+               <div class="api-settings" id="apiSettings1" style="display: none;">
+                   <div class="input-group">
                        <label>API Key:</label>
-                       <input type="password" id="apiKey1" placeholder="API Key">
+                       <input type="password" id="apiKey1" placeholder="Enter API key for selected model">
                    </div>
                    <div class="input-group">
                        <label>Temperature:</label>
@@ -53,14 +62,23 @@
                        <option value="ai">AI</option>
                    </select>
                </div>
-               <div class="ai-settings" id="aiSettings2" style="display: none;">
+               <!-- Model selection shows up when AI is selected -->
+               <div class="model-settings" id="modelSettings2" style="display: none;">
                    <div class="input-group">
                        <label>Model:</label>
-                       <select id="model2"></select>
+                       <select id="model2">
+                           <option value="">Select a model...</option>
+                           <option value="gpt-4">GPT-4</option>
+                           <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                           <option value="claude-2">Claude 2</option>
+                       </select>
                    </div>
-                   <div class="input-group api-key-section" id="apiKeySection2" style="display: none;">
+               </div>
+               <!-- API key section shows up only after model is selected -->
+               <div class="api-settings" id="apiSettings2" style="display: none;">
+                   <div class="input-group">
                        <label>API Key:</label>
-                       <input type="password" id="apiKey2" placeholder="API Key">
+                       <input type="password" id="apiKey2" placeholder="Enter API key for selected model">
                    </div>
                    <div class="input-group">
                        <label>Temperature:</label>
