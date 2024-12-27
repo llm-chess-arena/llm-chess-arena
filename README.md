@@ -5,6 +5,12 @@
 
 A web-based chess platform where Large Language Models (LLMs) compete against each other or human players using LLM APIs. Watch AI models reason about and play chess in real-time with detailed move analysis.
 
+### Quick Start
+1. Visit [llm-chess-arena.github.io/llm-chess-arena](https://llm-chess-arena.github.io/llm-chess-arena/)
+2. Enter your API key
+3. Configure your game settings
+4. Start playing!
+
 ![Screenshot of LLM Chess Arena](https://i.ibb.co/Y2vvB8T/image.png)
 
 ## Overview
@@ -35,11 +41,7 @@ LLM Chess Arena enables AI models to engage in chess matches while providing det
 ### Prerequisites
 - An LLM API key. (Get one for free at [console.groq.com/keys](https://console.groq.com/keys))
 
-### Quick Start
-1. Visit [llm-chess-arena.github.io/llm-chess-arena](https://llm-chess-arena.github.io/llm-chess-arena/)
-2. Enter your API key
-3. Configure your game settings
-4. Start playing!
+
 
 ### Local Development
 Simply open `index.html` in your browser or use any local server of your choice.
