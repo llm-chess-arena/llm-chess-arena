@@ -367,13 +367,10 @@ class ChessGame {
            document.getElementById('playerType1').value :
            document.getElementById('playerType2').value;
 
-       // Only allow the human player to move their pieces
        if (playerType !== 'human') return false;
 
-       // Don't allow moving pieces if the game is over
        if (this.game.game_over()) return false;
 
-       // Only allow the current player to move their pieces
        if ((this.currentPlayer === 'white' && piece.search(/^b/) !== -1) ||
            (this.currentPlayer === 'black' && piece.search(/^w/) !== -1)) {
            return false;
@@ -389,19 +386,15 @@ class ChessGame {
 
        if (playerType !== 'human') return;
 
-       // Get list of possible moves for this square
        const moves = this.game.moves({
            square: square,
            verbose: true
        });
 
-       // Exit if there are no moves available for this square
        if (moves.length === 0) return;
 
-       // Highlight the square they moused over
        this.greySquare(square);
 
-       // Highlight the possible squares for this piece
        for (let i = 0; i < moves.length; i++) {
            this.greySquare(moves[i].to);
        }
@@ -424,34 +417,28 @@ class ChessGame {
 
        if (playerType !== 'human') return 'snapback';
 
-       // Check if the move is legal
        const move = this.game.move({
            from: source,
            to: target,
-           promotion: 'q' // Always promote to queen for simplicity
+           promotion: 'q'
        });
 
-       // If illegal move, snapback
        if (move === null) return 'snapback';
 
-       // Log the human move
        this.logMove({
            move: move.san,
            reasoning: "Human player's move"
        });
 
-       // Update game state
        this.currentPlayer = this.currentPlayer === 'white' ? 'black' : 'white';
        if (this.currentPlayer === 'white') this.moveCount++;
        this.updateStatus();
 
-       // If game is over, handle it
        if (this.game.game_over()) {
            this.handleGameOver();
            return;
        }
 
-       // If next player is AI, trigger their move
        const nextPlayerType = this.currentPlayer === 'white' ? 
            document.getElementById('playerType1').value :
            document.getElementById('playerType2').value;
@@ -521,7 +508,6 @@ class ChessGame {
            aiSettings.style.display = playerType === 'ai' ? 'block' : 'none';
        });
 
-       // Update "Make Move" button visibility based on current player type
        const currentPlayerNum = this.currentPlayer === 'white' ? '1' : '2';
        const currentPlayerType = document.getElementById(`playerType${currentPlayerNum}`).value;
        document.getElementById('stepBtn').disabled = currentPlayerType !== 'ai' || this.game.game_over();
@@ -599,7 +585,6 @@ class ChessGame {
                return false;
            }
 
-           // If next player is also AI and auto-play is enabled, continue
            const nextPlayerType = this.currentPlayer === 'white' ? 
                document.getElementById('playerType1').value :
                document.getElementById('playerType2').value;
@@ -663,7 +648,6 @@ class ChessGame {
        this.updateStatus();
        this.updatePlayerControls();
 
-       // If white player is AI, trigger their move
        const whitePlayerType = document.getElementById('playerType1').value;
        if (whitePlayerType === 'ai') {
            setTimeout(() => this.makeMove(), 500);
@@ -687,6 +671,7 @@ class ChessGame {
        this.logDebug(`Game over: ${result}`);
        this.updateStatus();
    }
+
    updateStatus() {
        document.getElementById('turnIndicator').textContent = `Turn: ${this.currentPlayer.charAt(0).toUpperCase() + this.currentPlayer.slice(1)}`;
        document.getElementById('moveIndicator').textContent = `Move: ${this.moveCount}`;
@@ -704,8 +689,18 @@ class ChessGame {
        const reasoningLog = document.getElementById('reasoningLog');
        const entry = document.createElement('div');
        entry.className = `move-entry ${this.currentPlayer}`;
+       
+       // Get the player number (1 for white, 2 for black)
+       const playerNum = this.currentPlayer === 'white' ? '1' : '2';
+       
+       // Get the player type and model
+       const playerType = document.getElementById(`playerType${playerNum}`).value;
+       const modelName = playerType === 'ai' ? 
+           ` (${document.getElementById(`model${playerNum}`).value})` : 
+           ' (Human)';
+
        entry.innerHTML = `
-           <strong>${this.currentPlayer.charAt(0).toUpperCase() + this.currentPlayer.slice(1)} Move ${this.moveCount}:</strong> ${moveData.move}<br>
+           <strong>${this.currentPlayer.charAt(0).toUpperCase() + this.currentPlayer.slice(1)} Move ${this.moveCount}:</strong> ${moveData.move}${modelName}<br>
            <strong>Reasoning:</strong> ${moveData.reasoning}
        `;
        reasoningLog.insertBefore(entry, reasoningLog.firstChild);
