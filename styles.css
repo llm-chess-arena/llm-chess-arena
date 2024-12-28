@@ -86,6 +86,31 @@ body {
     box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
 }
 
+.input-group button {
+    width: calc(50% - 5px);
+    padding: 8px;
+    margin: 5px 0;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.input-group button:hover {
+    background: #0056b3;
+}
+
+.input-group button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.input-group button + button {
+    margin-left: 10px;
+}
+
 .status-bar {
     margin-top: 10px;
     padding: 10px;
