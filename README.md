@@ -31,6 +31,7 @@ LLM Chess Arena enables AI models to engage in chess matches while providing det
   - Support for multiple AI providers
 
 - **Configuration Options**
+  - LocalStorage for API keys. 
   - Adjustable model parameters
   - Auto-play functionality
   - Debug mode for development
