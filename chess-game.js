@@ -347,43 +347,8 @@ class ChessGame {
        this.populateModelDropdowns();
        this.loadSettings();
        this.loadSavedApiKeys();
+       ['1', '2'].forEach(playerNum => this.updateApiKeyButtons(playerNum));
        this.updatePlayerControls();
-   }
-
-   saveApiKey(playerNum) {
-       const apiKeyInput = document.getElementById(`apiKey${playerNum}`);
-       const modelSelect = document.getElementById(`model${playerNum}`);
-       const provider = ChessProviderFactory.getProviderFromModel(modelSelect.value);
-       
-       if (apiKeyInput.value && provider) {
-           localStorage.setItem(`${provider}_api_key`, apiKeyInput.value);
-           this.logDebug(`Saved API key for ${provider}`);
-       }
-   }
-
-   clearApiKey(playerNum) {
-       const modelSelect = document.getElementById(`model${playerNum}`);
-       const provider = ChessProviderFactory.getProviderFromModel(modelSelect.value);
-       
-       if (provider) {
-           localStorage.removeItem(`${provider}_api_key`);
-           document.getElementById(`apiKey${playerNum}`).value = '';
-           this.logDebug(`Cleared API key for ${provider}`);
-       }
-   }
-
-   loadSavedApiKeys() {
-       ['1', '2'].forEach(playerNum => {
-           const modelSelect = document.getElementById(`model${playerNum}`);
-           const provider = ChessProviderFactory.getProviderFromModel(modelSelect.value);
-           if (provider) {
-               const savedKey = localStorage.getItem(`${provider}_api_key`);
-               if (savedKey) {
-                   document.getElementById(`apiKey${playerNum}`).value = savedKey;
-                   this.logDebug(`Loaded saved API key for ${provider}`);
-               }
-           }
-       });
    }
 
    initializeBoard() {
@@ -401,6 +366,52 @@ class ChessGame {
 
        this.board = Chessboard('board', config);
        $(window).resize(() => this.board.resize());
+   }
+
+   updateApiKeyButtons(playerNum) {
+       const apiKeyInput = document.getElementById(`apiKey${playerNum}`);
+       const modelSelect = document.getElementById(`model${playerNum}`);
+       const provider = ChessProviderFactory.getProviderFromModel(modelSelect.value);
+       const savedKey = provider ? localStorage.getItem(`${provider}_api_key`) : null;
+       const saveButton = document.getElementById(`saveApiKey${playerNum}`);
+       const clearButton = document.getElementById(`clearApiKey${playerNum}`);
+
+       saveButton.style.display = (apiKeyInput.value && apiKeyInput.value !== savedKey) ? 'inline-block' : 'none';
+       clearButton.style.display = savedKey ? 'inline-block' : 'none';
+   }
+
+   saveApiKey(playerNum) {
+       const apiKeyInput = document.getElementById(`apiKey${playerNum}`);
+       const modelSelect = document.getElementById(`model${playerNum}`);
+       const provider = ChessProviderFactory.getProviderFromModel(modelSelect.value);
+       
+       if (apiKeyInput.value && provider) {
+           localStorage.setItem(`${provider}_api_key`, apiKeyInput.value);
+           this.logDebug(`Saved API key for ${provider}`);
+           this.updateApiKeyButtons(playerNum);
+       }
+   }
+
+   clearApiKey(playerNum) {
+       const modelSelect = document.getElementById(`model${playerNum}`);
+       const provider = ChessProviderFactory.getProviderFromModel(modelSelect.value);
+       
+       if (provider) {
+           localStorage.removeItem(`${provider}_api_key`);
+           document.getElementById(`apiKey${playerNum}`).value = '';
+           this.logDebug(`Cleared API key for ${provider}`);
+           this.updateApiKeyButtons(playerNum);
+       }
+   }
+
+   loadApiKeyForModel(modelSelect) {
+       const playerNum = modelSelect.id === 'model1' ? '1' : '2';
+       const provider = ChessProviderFactory.getProviderFromModel(modelSelect.value);
+       const savedKey = provider ? localStorage.getItem(`${provider}_api_key`) : null;
+       
+       const apiKeyInput = document.getElementById(`apiKey${playerNum}`);
+       apiKeyInput.value = savedKey || '';
+       this.updateApiKeyButtons(playerNum);
    }
 
    onDragStart(source, piece) {
@@ -504,15 +515,6 @@ class ChessGame {
        });
    }
 
-   loadApiKeyForModel(modelSelect) {
-       const playerNum = modelSelect.id === 'model1' ? '1' : '2';
-       const provider = ChessProviderFactory.getProviderFromModel(modelSelect.value);
-       const savedKey = provider ? localStorage.getItem(`${provider}_api_key`) : null;
-       
-       const apiKeyInput = document.getElementById(`apiKey${playerNum}`);
-       apiKeyInput.value = savedKey || '';
-   }
-
    updateTempRange(modelSelect) {
        const player = modelSelect.id === 'model1' ? 1 : 2;
        const tempRange = ChessProviderFactory.getTempRange(modelSelect.value);
@@ -547,6 +549,10 @@ class ChessGame {
        });
 
        ['1', '2'].forEach(playerNum => {
+           document.getElementById(`apiKey${playerNum}`).addEventListener('input', () => {
+               this.updateApiKeyButtons(playerNum);
+           });
+
            document.getElementById(`saveApiKey${playerNum}`).addEventListener('click', () => {
                this.saveApiKey(playerNum);
            });
@@ -584,6 +590,20 @@ class ChessGame {
            }
        });
        this.updatePlayerControls();
+   }
+
+   loadSavedApiKeys() {
+       ['1', '2'].forEach(playerNum => {
+           const modelSelect = document.getElementById(`model${playerNum}`);
+           const provider = ChessProviderFactory.getProviderFromModel(modelSelect.value);
+           if (provider) {
+               const savedKey = localStorage.getItem(`${provider}_api_key`);
+               if (savedKey) {
+                   document.getElementById(`apiKey${playerNum}`).value = savedKey;
+                   this.logDebug(`Loaded saved API key for ${provider}`);
+               }
+           }
+       });
    }
 
    saveSettings() {
@@ -773,10 +793,10 @@ class ChessGame {
        const entry = document.createElement('div');
        entry.className = 'move-entry';
        entry.innerHTML = `<strong>Game:</strong> ${message}`;
-       document.getElementById('reasoningLog').insertBefore(entry, reasoningLog.firstFirst);
+       document.getElementById('reasoningLog').insertBefore(entry, reasoningLog.firstChild);
    }
 
-   logDebug(message) {
+    logDebug(message) {
        if (!this.debugMode) return;
        const entry = document.createElement('div');
        entry.className = 'move-entry debug';
