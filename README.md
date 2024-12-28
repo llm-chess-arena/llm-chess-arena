@@ -1,7 +1,7 @@
 # LLM Chess Arena
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-1.0.0-green.svg)
+![Version](https://img.shields.io/badge/version-1.0.1-green.svg)
 
 A web-based chess platform where Large Language Models (LLMs) compete against each other or human players using LLM APIs. Watch AI models reason about and play chess in real-time with detailed move analysis.
 
