@@ -324,6 +324,10 @@ class ChessProviderFactory {
    static getTempRange(modelName) {
        return this.MODELS[modelName]?.tempRange || { min: 0.1, max: 1.0 };
    }
+
+   static getProviderFromModel(modelName) {
+       return this.MODELS[modelName]?.provider;
+   }
 }
 
 class ChessGame {
@@ -342,7 +346,44 @@ class ChessGame {
        this.initializeControls();
        this.populateModelDropdowns();
        this.loadSettings();
+       this.loadSavedApiKeys();
        this.updatePlayerControls();
+   }
+
+   saveApiKey(playerNum) {
+       const apiKeyInput = document.getElementById(`apiKey${playerNum}`);
+       const modelSelect = document.getElementById(`model${playerNum}`);
+       const provider = ChessProviderFactory.getProviderFromModel(modelSelect.value);
+       
+       if (apiKeyInput.value && provider) {
+           localStorage.setItem(`${provider}_api_key`, apiKeyInput.value);
+           this.logDebug(`Saved API key for ${provider}`);
+       }
+   }
+
+   clearApiKey(playerNum) {
+       const modelSelect = document.getElementById(`model${playerNum}`);
+       const provider = ChessProviderFactory.getProviderFromModel(modelSelect.value);
+       
+       if (provider) {
+           localStorage.removeItem(`${provider}_api_key`);
+           document.getElementById(`apiKey${playerNum}`).value = '';
+           this.logDebug(`Cleared API key for ${provider}`);
+       }
+   }
+
+   loadSavedApiKeys() {
+       ['1', '2'].forEach(playerNum => {
+           const modelSelect = document.getElementById(`model${playerNum}`);
+           const provider = ChessProviderFactory.getProviderFromModel(modelSelect.value);
+           if (provider) {
+               const savedKey = localStorage.getItem(`${provider}_api_key`);
+               if (savedKey) {
+                   document.getElementById(`apiKey${playerNum}`).value = savedKey;
+                   this.logDebug(`Loaded saved API key for ${provider}`);
+               }
+           }
+       });
    }
 
    initializeBoard() {
@@ -368,14 +409,11 @@ class ChessGame {
            document.getElementById('playerType2').value;
 
        if (playerType !== 'human') return false;
-
        if (this.game.game_over()) return false;
-
        if ((this.currentPlayer === 'white' && piece.search(/^b/) !== -1) ||
            (this.currentPlayer === 'black' && piece.search(/^w/) !== -1)) {
            return false;
        }
-
        return true;
    }
 
@@ -459,8 +497,20 @@ class ChessGame {
                option.textContent = model;
                select.appendChild(option);
            });
-           select.addEventListener('change', (e) => this.updateTempRange(e.target));
+           select.addEventListener('change', (e) => {
+               this.updateTempRange(e.target);
+               this.loadApiKeyForModel(e.target);
+           });
        });
+   }
+
+   loadApiKeyForModel(modelSelect) {
+       const playerNum = modelSelect.id === 'model1' ? '1' : '2';
+       const provider = ChessProviderFactory.getProviderFromModel(modelSelect.value);
+       const savedKey = provider ? localStorage.getItem(`${provider}_api_key`) : null;
+       
+       const apiKeyInput = document.getElementById(`apiKey${playerNum}`);
+       apiKeyInput.value = savedKey || '';
    }
 
    updateTempRange(modelSelect) {
@@ -493,6 +543,15 @@ class ChessGame {
            document.getElementById(id).addEventListener('change', () => {
                this.updatePlayerControls();
                this.saveSettings();
+           });
+       });
+
+       ['1', '2'].forEach(playerNum => {
+           document.getElementById(`saveApiKey${playerNum}`).addEventListener('click', () => {
+               this.saveApiKey(playerNum);
+           });
+           document.getElementById(`clearApiKey${playerNum}`).addEventListener('click', () => {
+               this.clearApiKey(playerNum);
            });
        });
 
@@ -690,10 +749,7 @@ class ChessGame {
        const entry = document.createElement('div');
        entry.className = `move-entry ${this.currentPlayer}`;
        
-       // Get the player number (1 for white, 2 for black)
        const playerNum = this.currentPlayer === 'white' ? '1' : '2';
-       
-       // Get the player type and model
        const playerType = document.getElementById(`playerType${playerNum}`).value;
        const modelName = playerType === 'ai' ? 
            ` (${document.getElementById(`model${playerNum}`).value})` : 
@@ -717,7 +773,7 @@ class ChessGame {
        const entry = document.createElement('div');
        entry.className = 'move-entry';
        entry.innerHTML = `<strong>Game:</strong> ${message}`;
-       document.getElementById('reasoningLog').insertBefore(entry, reasoningLog.firstChild);
+       document.getElementById('reasoningLog').insertBefore(entry, reasoningLog.firstFirst);
    }
 
    logDebug(message) {
