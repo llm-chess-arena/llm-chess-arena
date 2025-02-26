@@ -270,64 +270,157 @@ Respond with a JSON containing your chosen move and reasoning.`;
     }
 }
 
+class OpenRouterProvider extends ChessModelProvider {
+    constructor(apiKey, model, temperature) {
+        super();
+        this.apiKey = apiKey;
+        this.model = model;
+        this.temperature = temperature;
+    }
+
+    async makeMove({ fen, history, legalMoves }) {
+        return this.retryWithBackoff(async () => {
+            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'Content-Type': 'application/json',
+                    'HTTP-Referer': window.location.origin // OpenRouter requires this
+                },
+                body: JSON.stringify({
+                    messages: [
+                        { role: "system", content: SYSTEM_PROMPT },
+                        { role: "user", content: this.formatPrompt(fen, history, legalMoves) }
+                    ],
+                    model: this.model,
+                    temperature: parseFloat(this.temperature),
+                    response_format: { type: "json_object" }
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`OpenRouter API Error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            return this.validateResponse(JSON.parse(data.choices[0].message.content), legalMoves);
+        });
+    }
+
+    formatPrompt(fen, history, legalMoves) {
+        return `
+Current board position (FEN): ${fen}
+
+Game history:
+${history.map(move => `${move.moveNumber}. ${move.san}`).join('\n')}
+
+Legal moves: ${legalMoves.join(', ')}
+
+Based on the current board position and game history, select one move from the legal moves list.
+Think carefully and choose the best move according to sound chess principles.
+Respond in the required JSON format with your move and reasoning.
+`;
+    }
+}
+
 class ChessProviderFactory {
-   static MODELS = {
-       'Groq LLaMa 3.3 70B Versatile': {
-           provider: 'groq',
-           modelId: 'llama-3.3-70b-versatile',
-           tempRange: { min: 0.1, max: 1.0 }
-       },
-       'Groq LLaMa 3.3 70B SpecDec': {
-           provider: 'groq',
-           modelId: 'llama-3.3-70b-specdec',
-           tempRange: { min: 0.1, max: 1.0 }
-       },
-       'OpenAI Gpt-4': {
-           provider: 'openai',
-           modelId: 'gpt-4',
-           tempRange: { min: 0.1, max: 1.0 }
-       },
-       'Gemini Pro': {
-           provider: 'gemini',
-           modelId: 'gemini-2.0-flash-exp',
-           tempRange: { min: 0.1, max: 1.0 }
-       },
-       'xAI Grok': {
-           provider: 'grok',
-           modelId: 'grok-beta',
-           tempRange: { min: 0.1, max: 1.0 }
-       }
-   };
+    static PROVIDERS = {
+        'groq': {
+            displayName: 'Groq',
+            models: {
+                'llama-3.3-70b-versatile': {
+                    displayName: 'LLaMa 3.3 70B Versatile',
+                    tempRange: { min: 0.1, max: 1.0 }
+                },
+                'llama-3.3-70b-specdec': {
+                    displayName: 'LLaMa 3.3 70B SpecDec',
+                    tempRange: { min: 0.1, max: 1.0 }
+                }
+            }
+        },
+        'openai': {
+            displayName: 'OpenAI',
+            models: {
+                'gpt-4': {
+                    displayName: 'GPT-4',
+                    tempRange: { min: 0.1, max: 1.0 }
+                }
+            }
+        },
+        'gemini': {
+            displayName: 'Google Gemini',
+            models: {
+                'gemini-2.0-flash-exp': {
+                    displayName: 'Gemini Pro',
+                    tempRange: { min: 0.1, max: 1.0 }
+                }
+            }
+        },
+        'grok': {
+            displayName: 'xAI Grok',
+            models: {
+                'grok-beta': {
+                    displayName: 'Grok Beta',
+                    tempRange: { min: 0.1, max: 1.0 }
+                }
+            }
+        },
+        'openrouter': {
+            displayName: 'OpenRouter',
+            models: {
+                'anthropic/claude-3-opus:beta': {
+                    displayName: 'Claude 3 Opus',
+                    tempRange: { min: 0.1, max: 1.0 }
+                },
+                'anthropic/claude-3-sonnet': {
+                    displayName: 'Claude 3 Sonnet',
+                    tempRange: { min: 0.1, max: 1.0 }
+                },
+                'meta-llama/llama-3-70b-instruct': {
+                    displayName: 'Llama 3 70B',
+                    tempRange: { min: 0.1, max: 1.0 }
+                }
+            }
+        }
+    }
 
-   static createProvider(modelName, apiKey, temperature) {
-       const config = this.MODELS[modelName];
-       if (!config) throw new Error(`Unknown model: ${modelName}`);
+    static getProviders() {
+        return Object.keys(this.PROVIDERS).map(key => ({
+            id: key,
+            name: this.PROVIDERS[key].displayName
+        }));
+    }
 
-       switch(config.provider) {
-           case 'groq':
-               return new GroqProvider(apiKey, config.modelId, temperature);
-           case 'openai':
-               return new OpenAIProvider(apiKey, config.modelId, temperature);
-           case 'gemini':
-               return new GeminiProvider(apiKey, config.modelId, temperature);
-           case 'grok':
-               return new GrokProvider(apiKey, config.modelId, temperature);
-           default:
-               throw new Error(`Unknown provider: ${config.provider}`);
-       }
-   }
+    static getModelsByProvider(providerId) {
+        const provider = this.PROVIDERS[providerId];
+        if (!provider) return [];
+        
+        return Object.keys(provider.models).map(key => ({
+            id: key,
+            name: provider.models[key].displayName
+        }));
+    }
 
-   static getModels() {
-       return Object.keys(this.MODELS);
-   }
+    static getTempRange(providerId, modelId) {
+        return this.PROVIDERS[providerId]?.models[modelId]?.tempRange || { min: 0.1, max: 1.0 };
+    }
 
-   static getTempRange(modelName) {
-       return this.MODELS[modelName]?.tempRange || { min: 0.1, max: 1.0 };
-   }
-
-   static getProviderFromModel(modelName) {
-       return this.MODELS[modelName]?.provider;
-   }
+    static createProvider(providerId, modelId, apiKey, temperature) {
+        switch(providerId) {
+            case 'groq':
+                return new GroqProvider(apiKey, modelId, temperature);
+            case 'openai':
+                return new OpenAIProvider(apiKey, modelId, temperature);
+            case 'gemini':
+                return new GeminiProvider(apiKey, modelId, temperature);
+            case 'grok':
+                return new GrokProvider(apiKey, modelId, temperature);
+            case 'openrouter':
+                return new OpenRouterProvider(apiKey, modelId, temperature);
+            default:
+                throw new Error(`Unknown provider: ${providerId}`);
+        }
+    }
 }
 
 class ChessGame {
@@ -342,13 +435,18 @@ class ChessGame {
        this.selectedPiece = null;
        this.legalMoves = new Map();
 
+       this.initialize();
+       this.updatePlayerControls();
+   }
+
+   initialize() {
        this.initializeBoard();
        this.initializeControls();
-       this.populateModelDropdowns();
+       this.populateProviderDropdowns();
        this.loadSettings();
        this.loadSavedApiKeys();
        ['1', '2'].forEach(playerNum => this.updateApiKeyButtons(playerNum));
-       this.updatePlayerControls();
+       $(window).resize(() => this.board.resize());
    }
 
    initializeBoard() {
@@ -365,14 +463,13 @@ class ChessGame {
        };
 
        this.board = Chessboard('board', config);
-       $(window).resize(() => this.board.resize());
    }
 
    updateApiKeyButtons(playerNum) {
        const apiKeyInput = document.getElementById(`apiKey${playerNum}`);
-       const modelSelect = document.getElementById(`model${playerNum}`);
-       const provider = ChessProviderFactory.getProviderFromModel(modelSelect.value);
-       const savedKey = provider ? localStorage.getItem(`${provider}_api_key`) : null;
+       const providerSelect = document.getElementById(`provider${playerNum}`);
+       const providerId = providerSelect.value;
+       const savedKey = providerId ? localStorage.getItem(`${providerId}_api_key`) : null;
        const saveButton = document.getElementById(`saveApiKey${playerNum}`);
        const clearButton = document.getElementById(`clearApiKey${playerNum}`);
 
@@ -382,32 +479,33 @@ class ChessGame {
 
    saveApiKey(playerNum) {
        const apiKeyInput = document.getElementById(`apiKey${playerNum}`);
-       const modelSelect = document.getElementById(`model${playerNum}`);
-       const provider = ChessProviderFactory.getProviderFromModel(modelSelect.value);
+       const providerSelect = document.getElementById(`provider${playerNum}`);
+       const providerId = providerSelect.value;
        
-       if (apiKeyInput.value && provider) {
-           localStorage.setItem(`${provider}_api_key`, apiKeyInput.value);
-           this.logDebug(`Saved API key for ${provider}`);
+       if (apiKeyInput.value && providerId) {
+           localStorage.setItem(`${providerId}_api_key`, apiKeyInput.value);
+           this.logDebug(`Saved API key for ${providerId}`);
            this.updateApiKeyButtons(playerNum);
        }
    }
 
    clearApiKey(playerNum) {
-       const modelSelect = document.getElementById(`model${playerNum}`);
-       const provider = ChessProviderFactory.getProviderFromModel(modelSelect.value);
+       const providerSelect = document.getElementById(`provider${playerNum}`);
+       const providerId = providerSelect.value;
        
-       if (provider) {
-           localStorage.removeItem(`${provider}_api_key`);
+       if (providerId) {
+           localStorage.removeItem(`${providerId}_api_key`);
            document.getElementById(`apiKey${playerNum}`).value = '';
-           this.logDebug(`Cleared API key for ${provider}`);
+           this.logDebug(`Cleared API key for ${providerId}`);
            this.updateApiKeyButtons(playerNum);
        }
    }
 
    loadApiKeyForModel(modelSelect) {
        const playerNum = modelSelect.id === 'model1' ? '1' : '2';
-       const provider = ChessProviderFactory.getProviderFromModel(modelSelect.value);
-       const savedKey = provider ? localStorage.getItem(`${provider}_api_key`) : null;
+       const providerSelect = document.getElementById(`provider${playerNum}`);
+       const providerId = providerSelect.value;
+       const savedKey = providerId ? localStorage.getItem(`${providerId}_api_key`) : null;
        
        const apiKeyInput = document.getElementById(`apiKey${playerNum}`);
        apiKeyInput.value = savedKey || '';
@@ -497,37 +595,70 @@ class ChessGame {
        }
    }
 
-   populateModelDropdowns() {
-       const models = ChessProviderFactory.getModels();
+   populateProviderDropdowns() {
+       const providers = ChessProviderFactory.getProviders();
        ['1', '2'].forEach(playerNum => {
-           const select = document.getElementById(`model${playerNum}`);
+           const select = document.getElementById(`provider${playerNum}`);
            select.innerHTML = '';
-           select.appendChild(new Option('Select Model', ''));
-           models.forEach(model => {
-               select.appendChild(new Option(model, model));
+           select.appendChild(new Option('Select Provider', ''));
+           providers.forEach(provider => {
+               select.appendChild(new Option(provider.name, provider.id));
            });
+           
            select.addEventListener('change', (e) => {
-               this.updateTempRange(e.target);
-               
-               // Show/hide API key group based on model selection
+               const providerId = e.target.value;
+               const modelGroup = document.getElementById(`modelGroup${playerNum}`);
                const apiKeyGroup = document.getElementById(`apiKeyGroup${playerNum}`);
-               apiKeyGroup.style.display = e.target.value ? 'block' : 'none';
                
-               if (e.target.value) {
-                   this.loadApiKeyForModel(e.target);
+               // Show/hide model group based on provider selection
+               modelGroup.style.display = providerId ? 'block' : 'none';
+               
+               // Show/hide API key group based on provider selection
+               apiKeyGroup.style.display = providerId ? 'block' : 'none';
+               
+               // Update model dropdown for selected provider
+               if (providerId) {
+                   this.populateModelDropdown(playerNum, providerId);
+                   this.loadApiKeyForProvider(playerNum, providerId);
                }
+               
+               this.saveSettings();
            });
        });
    }
 
-   updateTempRange(modelSelect) {
-       const player = modelSelect.id === 'model1' ? 1 : 2;
-       const tempRange = ChessProviderFactory.getTempRange(modelSelect.value);
-       const tempInput = document.getElementById(`temp${player}`);
+   populateModelDropdown(playerNum, providerId) {
+       const models = ChessProviderFactory.getModelsByProvider(providerId);
+       const select = document.getElementById(`model${playerNum}`);
+       select.innerHTML = '';
+       select.appendChild(new Option('Select Model', ''));
+       models.forEach(model => {
+           select.appendChild(new Option(model.name, model.id));
+       });
+       
+       select.addEventListener('change', (e) => {
+           if (e.target.value) {
+               this.updateTempRange(playerNum, providerId, e.target.value);
+           }
+           this.saveSettings();
+       });
+   }
+
+   updateTempRange(playerNum, providerId, modelId) {
+       const tempRange = ChessProviderFactory.getTempRange(providerId, modelId);
+       const tempInput = document.getElementById(`temp${playerNum}`);
        tempInput.min = tempRange.min;
        tempInput.max = tempRange.max;
        tempInput.value = (tempRange.min + tempRange.max) / 2;
-       document.getElementById(`temp${player}Value`).textContent = tempInput.value;
+       document.getElementById(`temp${playerNum}Value`).textContent = tempInput.value;
+   }
+   
+   loadApiKeyForProvider(playerNum, providerId) {
+       const savedKey = providerId ? localStorage.getItem(`${providerId}_api_key`) : null;
+       
+       const apiKeyInput = document.getElementById(`apiKey${playerNum}`);
+       apiKeyInput.value = savedKey || '';
+       this.updateApiKeyButtons(playerNum);
    }
 
    initializeControls() {
@@ -581,7 +712,7 @@ class ChessGame {
 
    loadSettings() {
        const settings = JSON.parse(localStorage.getItem('chessSettings') || '{}');
-       ['playerType1', 'model1', 'temp1', 'playerType2', 'model2', 'temp2'].forEach(key => {
+       ['playerType1', 'provider1', 'model1', 'temp1', 'playerType2', 'provider2', 'model2', 'temp2'].forEach(key => {
            const element = document.getElementById(key);
            if (settings[key]) {
                element.value = settings[key];
@@ -596,12 +727,12 @@ class ChessGame {
    loadSavedApiKeys() {
        ['1', '2'].forEach(playerNum => {
            const modelSelect = document.getElementById(`model${playerNum}`);
-           const provider = ChessProviderFactory.getProviderFromModel(modelSelect.value);
+           const provider = ChessProviderFactory.getProviders().find(provider => provider.id === modelSelect.value.split('.')[0]);
            if (provider) {
-               const savedKey = localStorage.getItem(`${provider}_api_key`);
+               const savedKey = provider ? localStorage.getItem(`${provider.id}_api_key`) : null;
                if (savedKey) {
                    document.getElementById(`apiKey${playerNum}`).value = savedKey;
-                   this.logDebug(`Loaded saved API key for ${provider}`);
+                   this.logDebug(`Loaded saved API key for ${provider.id}`);
                }
            }
        });
@@ -610,9 +741,11 @@ class ChessGame {
    saveSettings() {
        const settings = {
            playerType1: document.getElementById('playerType1').value,
+           provider1: document.getElementById('provider1').value,
            model1: document.getElementById('model1').value,
            temp1: document.getElementById('temp1').value,
            playerType2: document.getElementById('playerType2').value,
+           provider2: document.getElementById('provider2').value,
            model2: document.getElementById('model2').value,
            temp2: document.getElementById('temp2').value
        };
@@ -635,7 +768,8 @@ class ChessGame {
                return false;
            }
 
-           const modelName = document.getElementById(`model${player}`).value;
+           const providerId = document.getElementById(`provider${player}`).value;
+           const modelId = document.getElementById(`model${player}`).value;
            const apiKey = document.getElementById(`apiKey${player}`).value;
            const temperature = document.getElementById(`temp${player}`).value;
 
@@ -643,7 +777,7 @@ class ChessGame {
                throw new Error(`API key required for ${this.currentPlayer} player`);
            }
 
-           const provider = ChessProviderFactory.createProvider(modelName, apiKey, temperature);
+           const provider = ChessProviderFactory.createProvider(providerId, modelId, apiKey, temperature);
            const moveData = await provider.makeMove({
                fen: this.game.fen(),
                history: this.game.history().join(' '),
@@ -772,6 +906,7 @@ class ChessGame {
        
        const playerNum = this.currentPlayer === 'white' ? '1' : '2';
        const playerType = document.getElementById(`playerType${playerNum}`).value;
+       const providerId = document.getElementById(`provider${playerNum}`).value;
        const modelName = playerType === 'ai' ? 
            ` (${document.getElementById(`model${playerNum}`).value})` : 
            ' (Human)';
