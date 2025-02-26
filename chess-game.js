@@ -499,18 +499,23 @@ class ChessGame {
 
    populateModelDropdowns() {
        const models = ChessProviderFactory.getModels();
-       ['model1', 'model2'].forEach(id => {
-           const select = document.getElementById(id);
+       ['1', '2'].forEach(playerNum => {
+           const select = document.getElementById(`model${playerNum}`);
            select.innerHTML = '';
+           select.appendChild(new Option('Select Model', ''));
            models.forEach(model => {
-               const option = document.createElement('option');
-               option.value = model;
-               option.textContent = model;
-               select.appendChild(option);
+               select.appendChild(new Option(model, model));
            });
            select.addEventListener('change', (e) => {
                this.updateTempRange(e.target);
-               this.loadApiKeyForModel(e.target);
+               
+               // Show/hide API key group based on model selection
+               const apiKeyGroup = document.getElementById(`apiKeyGroup${playerNum}`);
+               apiKeyGroup.style.display = e.target.value ? 'block' : 'none';
+               
+               if (e.target.value) {
+                   this.loadApiKeyForModel(e.target);
+               }
            });
        });
    }
@@ -559,10 +564,6 @@ class ChessGame {
            document.getElementById(`clearApiKey${playerNum}`).addEventListener('click', () => {
                this.clearApiKey(playerNum);
            });
-       });
-
-       ['apiKey1', 'model1', 'temp1', 'apiKey2', 'model2', 'temp2'].forEach(id => {
-           document.getElementById(id).addEventListener('change', () => this.saveSettings());
        });
    }
 
