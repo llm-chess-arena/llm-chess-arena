@@ -326,57 +326,82 @@ Respond in the required JSON format with your move and reasoning.
 class ChessProviderFactory {
     // Use the external configuration file
     static get PROVIDERS() {
-        console.log("Checking for PROVIDERS_CONFIG:", typeof PROVIDERS_CONFIG);
+        console.log(" ChessProviderFactory.PROVIDERS getter called");
+        console.log(" PROVIDERS_CONFIG type:", typeof PROVIDERS_CONFIG);
+        console.log(" PROVIDER_CONFIG type:", typeof PROVIDER_CONFIG);
+        
         if (typeof PROVIDERS_CONFIG !== 'undefined') {
-            console.log("PROVIDERS_CONFIG found:", PROVIDERS_CONFIG);
+            console.log(" Using PROVIDERS_CONFIG");
+            console.log(" Available providers:", Object.keys(PROVIDERS_CONFIG));
             return PROVIDERS_CONFIG;
         }
-        // Check if we have the PROVIDER_CONFIG variable instead (without the S)
+        
         if (typeof PROVIDER_CONFIG !== 'undefined') {
-            console.log("PROVIDER_CONFIG found:", PROVIDER_CONFIG);
+            console.log(" Using PROVIDER_CONFIG");
+            console.log(" Available providers:", Object.keys(PROVIDER_CONFIG));
             return PROVIDER_CONFIG;
         }
-        // Fallback to empty config if external file not loaded
-        console.log("No config found, returning empty object");
+        
+        console.log(" No config found, returning empty object");
         return {};
     }
 
     static getProviders() {
+        console.log(" ChessProviderFactory.getProviders called");
         const providers = Object.keys(this.PROVIDERS).map(key => ({
             id: key,
             name: this.PROVIDERS[key].displayName
         }));
-        console.log("Provider list:", providers);
+        console.log(" Provider list:", JSON.stringify(providers, null, 2));
         return providers;
     }
 
     static getModelsByProvider(providerId) {
+        console.log(` ChessProviderFactory.getModelsByProvider called for: ${providerId}`);
         const provider = this.PROVIDERS[providerId];
-        if (!provider) return [];
+        if (!provider) {
+            console.log(` Provider not found: ${providerId}`);
+            return [];
+        }
         
-        return Object.keys(provider.models).map(key => ({
+        const models = Object.keys(provider.models).map(key => ({
             id: key,
             name: provider.models[key].displayName
         }));
+        console.log(` Models for ${providerId}:`, JSON.stringify(models, null, 2));
+        return models;
     }
 
     static getTempRange(providerId, modelId) {
-        return this.PROVIDERS[providerId]?.models[modelId]?.tempRange || { min: 0.1, max: 1.0 };
+        console.log(` ChessProviderFactory.getTempRange called for provider: ${providerId}, model: ${modelId}`);
+        const range = this.PROVIDERS[providerId]?.models[modelId]?.tempRange || { min: 0.1, max: 1.0 };
+        console.log(` Temperature range:`, JSON.stringify(range, null, 2));
+        return range;
     }
 
     static createProvider(providerId, modelId, apiKey, temperature) {
+        console.log(` ChessProviderFactory.createProvider called`);
+        console.log(` Provider: ${providerId}, Model: ${modelId}, Temperature: ${temperature}`);
+        console.log(` API Key present: ${apiKey ? 'Yes' : 'No'}`);
+        
         switch(providerId) {
             case 'groq':
+                console.log(` Creating GroqProvider instance`);
                 return new GroqProvider(apiKey, modelId, temperature);
             case 'openai':
+                console.log(` Creating OpenAIProvider instance`);
                 return new OpenAIProvider(apiKey, modelId, temperature);
             case 'gemini':
+                console.log(` Creating GeminiProvider instance`);
                 return new GeminiProvider(apiKey, modelId, temperature);
             case 'grok':
+                console.log(` Creating GrokProvider instance`);
                 return new GrokProvider(apiKey, modelId, temperature);
             case 'openrouter':
+                console.log(` Creating OpenRouterProvider instance`);
                 return new OpenRouterProvider(apiKey, modelId, temperature);
             default:
+                console.log(` Unknown provider: ${providerId}`);
                 throw new Error(`Unknown provider: ${providerId}`);
         }
     }
@@ -556,46 +581,65 @@ class ChessGame {
    }
 
    populateProviderDropdowns() {
+       console.log(" ChessGame.populateProviderDropdowns called");
        const providers = ChessProviderFactory.getProviders();
-       console.log("Providers:", providers);
+       console.log(" Providers to populate:", JSON.stringify(providers, null, 2));
        
        ['1', '2'].forEach(playerNum => {
-           console.log(`Populating provider${playerNum} dropdown`);
+           console.log(` Populating provider dropdown for player ${playerNum}`);
            const select = document.getElementById(`provider${playerNum}`);
+           if (!select) {
+               console.error(` Provider select element not found for player ${playerNum}`);
+               return;
+           }
+           console.log(` Found provider select element for player ${playerNum}`);
            
            // Save current value if any
            const currentValue = select.value;
+           console.log(` Current provider value: "${currentValue}"`);
            
            // Create a new select element
            const newSelect = document.createElement('select');
            newSelect.id = `provider${playerNum}`;
+           console.log(` Created new select element with id: ${newSelect.id}`);
            
            // Populate the dropdown
            newSelect.innerHTML = '';
            newSelect.appendChild(new Option('Select Provider', ''));
+           console.log(` Added default 'Select Provider' option`);
+           
            providers.forEach(provider => {
+               console.log(` Adding provider option: ${provider.name} (${provider.id})`);
                newSelect.appendChild(new Option(provider.name, provider.id));
            });
            
            // Restore previous value if possible
            if (currentValue) {
+               console.log(` Attempting to restore previous value: ${currentValue}`);
                newSelect.value = currentValue;
+               console.log(` New select value after restore: "${newSelect.value}"`);
            }
            
            // Add the change event listener
+           console.log(` Adding change event listener to provider dropdown`);
            newSelect.addEventListener('change', (e) => {
                const providerId = e.target.value;
+               console.log(` Provider changed to: "${providerId}"`);
+               
                const modelGroup = document.getElementById(`modelGroup${playerNum}`);
                const apiKeyGroup = document.getElementById(`apiKeyGroup${playerNum}`);
                
                // Show/hide model group based on provider selection
                modelGroup.style.display = providerId ? 'block' : 'none';
+               console.log(` Model group display: ${modelGroup.style.display}`);
                
                // Show/hide API key group based on provider selection
                apiKeyGroup.style.display = providerId ? 'block' : 'none';
+               console.log(` API key group display: ${apiKeyGroup.style.display}`);
                
                // Update model dropdown for selected provider
                if (providerId) {
+                   console.log(` Updating model dropdown for provider: ${providerId}`);
                    this.populateModelDropdown(playerNum, providerId);
                    this.loadApiKeyForProvider(playerNum, providerId);
                }
@@ -604,57 +648,71 @@ class ChessGame {
            });
            
            // Replace the old element with the new one
+           console.log(` Replacing old provider select with new one`);
            select.parentNode.replaceChild(newSelect, select);
+           console.log(` Provider dropdown population complete for player ${playerNum}`);
        });
    }
 
    populateModelDropdown(playerNum, providerId) {
+       console.log(`🔍 ChessGame.populateModelDropdown called for player ${playerNum}, provider ${providerId}`);
        const models = ChessProviderFactory.getModelsByProvider(providerId);
+       console.log(`📋 Models to populate:`, JSON.stringify(models, null, 2));
+       
        const select = document.getElementById(`model${playerNum}`);
+       if (!select) {
+           console.error(`❌ Model select element not found for player ${playerNum}`);
+           return;
+       }
+       console.log(`✅ Found model select element for player ${playerNum}`);
        
        // Save current value if any
        const currentValue = select.value;
+       console.log(`📊 Current model value: "${currentValue}"`);
        
        // Create a new select element
        const newSelect = document.createElement('select');
        newSelect.id = `model${playerNum}`;
+       console.log(`🔄 Created new select element with id: ${newSelect.id}`);
        
        // Populate the dropdown
        newSelect.innerHTML = '';
        newSelect.appendChild(new Option('Select Model', ''));
+       console.log(`🔄 Added default 'Select Model' option`);
+       
        models.forEach(model => {
+           console.log(`🔄 Adding model option: ${model.name} (${model.id})`);
            newSelect.appendChild(new Option(model.name, model.id));
        });
        
        // Restore previous value if possible and it still exists in new options
        if (currentValue) {
+           console.log(`🔄 Attempting to restore previous value: ${currentValue}`);
            const exists = [...newSelect.options].some(option => option.value === currentValue);
+           console.log(`📊 Previous value exists in new options: ${exists}`);
            if (exists) {
                newSelect.value = currentValue;
+               console.log(`📊 New select value after restore: "${newSelect.value}"`);
            }
        }
        
        // Add change event listener
+       console.log(`🔄 Adding change event listener to model dropdown`);
        newSelect.addEventListener('change', (e) => {
+           console.log(`🔄 Model changed to: "${e.target.value}"`);
            if (e.target.value) {
+               console.log(`🔄 Updating temperature range for model: ${e.target.value}`);
                this.updateTempRange(playerNum, providerId, e.target.value);
            }
            this.saveSettings();
        });
        
        // Replace the old element with the new one
+       console.log(`🔄 Replacing old model select with new one`);
        select.parentNode.replaceChild(newSelect, select);
+       console.log(`✅ Model dropdown population complete for player ${playerNum}`);
    }
 
-   updateTempRange(playerNum, providerId, modelId) {
-       const tempRange = ChessProviderFactory.getTempRange(providerId, modelId);
-       const tempInput = document.getElementById(`temp${playerNum}`);
-       tempInput.min = tempRange.min;
-       tempInput.max = tempRange.max;
-       tempInput.value = (tempRange.min + tempRange.max) / 2;
-       document.getElementById(`temp${playerNum}Value`).textContent = tempInput.value;
-   }
-   
    loadApiKeyForProvider(playerNum, providerId) {
        const savedKey = providerId ? localStorage.getItem(`${providerId}_api_key`) : null;
        

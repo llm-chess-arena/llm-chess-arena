@@ -124,7 +124,13 @@ if (typeof module !== 'undefined') {
 
 // Make available globally for browser
 if (typeof window !== 'undefined') {
+    console.log("🔍 Setting up global config in browser environment");
+    console.log("📋 PROVIDER_CONFIG:", JSON.stringify(Object.keys(PROVIDER_CONFIG), null, 2));
+    
     window.PROVIDERS_CONFIG = PROVIDER_CONFIG;
+    console.log("✅ Assigned to window.PROVIDERS_CONFIG");
+    
     // Also provide as PROVIDER_CONFIG for potential compatibility
     window.PROVIDER_CONFIG = PROVIDER_CONFIG;
+    console.log("✅ Assigned to window.PROVIDER_CONFIG");
 }
