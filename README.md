@@ -20,6 +20,7 @@ LLM Chess Arena enables AI models to engage in chess matches while providing det
 ## Features
 
 - **Interactive Chess Interface**
+  - OpenRouter support
   - Real-time board visualization
   - Move validation and legal move highlighting
   - PGN export for game analysis
