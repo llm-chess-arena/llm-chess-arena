@@ -549,16 +549,32 @@ class ChessGame {
    populateProviderDropdowns() {
        const providers = ChessProviderFactory.getProviders();
        console.log("Providers:", providers);
+       
        ['1', '2'].forEach(playerNum => {
            console.log(`Populating provider${playerNum} dropdown`);
            const select = document.getElementById(`provider${playerNum}`);
-           select.innerHTML = '';
-           select.appendChild(new Option('Select Provider', ''));
+           
+           // Save current value if any
+           const currentValue = select.value;
+           
+           // Create a new select element
+           const newSelect = document.createElement('select');
+           newSelect.id = `provider${playerNum}`;
+           
+           // Populate the dropdown
+           newSelect.innerHTML = '';
+           newSelect.appendChild(new Option('Select Provider', ''));
            providers.forEach(provider => {
-               select.appendChild(new Option(provider.name, provider.id));
+               newSelect.appendChild(new Option(provider.name, provider.id));
            });
            
-           select.addEventListener('change', (e) => {
+           // Restore previous value if possible
+           if (currentValue) {
+               newSelect.value = currentValue;
+           }
+           
+           // Add the change event listener
+           newSelect.addEventListener('change', (e) => {
                const providerId = e.target.value;
                const modelGroup = document.getElementById(`modelGroup${playerNum}`);
                const apiKeyGroup = document.getElementById(`apiKeyGroup${playerNum}`);
@@ -577,6 +593,9 @@ class ChessGame {
                
                this.saveSettings();
            });
+           
+           // Replace the old element with the new one
+           select.parentNode.replaceChild(newSelect, select);
        });
    }
 
@@ -584,9 +603,12 @@ class ChessGame {
        const models = ChessProviderFactory.getModelsByProvider(providerId);
        const select = document.getElementById(`model${playerNum}`);
        
-       // Remove existing event listeners by cloning and replacing the element
-       const newSelect = select.cloneNode(false);
-       select.parentNode.replaceChild(newSelect, select);
+       // Save current value if any
+       const currentValue = select.value;
+       
+       // Create a new select element
+       const newSelect = document.createElement('select');
+       newSelect.id = `model${playerNum}`;
        
        // Populate the dropdown
        newSelect.innerHTML = '';
@@ -595,6 +617,14 @@ class ChessGame {
            newSelect.appendChild(new Option(model.name, model.id));
        });
        
+       // Restore previous value if possible and it still exists in new options
+       if (currentValue) {
+           const exists = [...newSelect.options].some(option => option.value === currentValue);
+           if (exists) {
+               newSelect.value = currentValue;
+           }
+       }
+       
        // Add change event listener
        newSelect.addEventListener('change', (e) => {
            if (e.target.value) {
@@ -602,6 +632,9 @@ class ChessGame {
            }
            this.saveSettings();
        });
+       
+       // Replace the old element with the new one
+       select.parentNode.replaceChild(newSelect, select);
    }
 
    updateTempRange(playerNum, providerId, modelId) {
@@ -622,48 +655,66 @@ class ChessGame {
    }
 
    initializeControls() {
-       document.getElementById('startBtn').addEventListener('click', () => this.startNewGame());
-       document.getElementById('stepBtn').addEventListener('click', () => this.makeMove());
-       document.getElementById('copyPgn').addEventListener('click', () => this.copyPgnToClipboard());
-       document.getElementById('autoPlay').addEventListener('change', (e) => this.toggleAutoPlay(e.target.checked));
-       document.getElementById('debugMode').addEventListener('change', (e) => {
-           this.debugMode = e.target.checked;
-           this.logDebug('Debug mode ' + (this.debugMode ? 'enabled' : 'disabled'));
-       });
-       
-       ['temp1', 'temp2'].forEach(id => {
-           document.getElementById(id).addEventListener('input', (e) => {
-               document.getElementById(id + 'Value').textContent = e.target.value;
-           });
-       });
-
-       ['playerType1', 'playerType2'].forEach(id => {
-           document.getElementById(id).addEventListener('change', () => {
-               this.updatePlayerControls();
-               this.saveSettings();
-           });
-       });
-
-       ['1', '2'].forEach(playerNum => {
-           document.getElementById(`apiKey${playerNum}`).addEventListener('input', () => {
-               this.updateApiKeyButtons(playerNum);
-           });
-
-           document.getElementById(`saveApiKey${playerNum}`).addEventListener('click', () => {
-               this.saveApiKey(playerNum);
-           });
-           document.getElementById(`clearApiKey${playerNum}`).addEventListener('click', () => {
-               this.clearApiKey(playerNum);
-           });
-       });
-   }
+        document.getElementById('startBtn').addEventListener('click', () => this.startNewGame());
+        document.getElementById('stepBtn').addEventListener('click', () => this.makeMove());
+        document.getElementById('copyPgn').addEventListener('click', () => this.copyPgnToClipboard());
+        
+        // Button event listeners
+        const setupButtonListener = (id, callback) => {
+            const button = document.getElementById(id);
+            if (button) {
+                button.addEventListener('click', callback);
+            }
+        };
+        
+        setupButtonListener('startBtn', () => this.startNewGame());
+        setupButtonListener('stepBtn', () => this.makeMove());
+        setupButtonListener('copyPgn', () => this.copyPgnToClipboard());
+        
+        // Checkbox event listeners
+        const setupCheckboxListener = (id, callback) => {
+            const checkbox = document.getElementById(id);
+            if (checkbox) {
+                checkbox.addEventListener('change', (e) => callback(e.target.checked));
+            }
+        };
+        
+        setupCheckboxListener('autoPlay', (checked) => this.toggleAutoPlay(checked));
+        setupCheckboxListener('debugMode', (checked) => {
+            this.debugMode = checked;
+            this.logDebug('Debug mode ' + (this.debugMode ? 'enabled' : 'disabled'));
+        });
+        
+        // Temperature sliders
+        ['temp1', 'temp2'].forEach(id => {
+            const slider = document.getElementById(id);
+            if (slider) {
+                slider.addEventListener('input', (e) => {
+                    document.getElementById(id + 'Value').textContent = e.target.value;
+                });
+            }
+        });
+        
+        // API key handling
+        ['1', '2'].forEach(playerNum => {
+            const apiKeyInput = document.getElementById(`apiKey${playerNum}`);
+            if (apiKeyInput) {
+                apiKeyInput.addEventListener('input', () => {
+                    this.updateApiKeyButtons(playerNum);
+                });
+            }
+            
+            setupButtonListener(`saveApiKey${playerNum}`, () => this.saveApiKey(playerNum));
+            setupButtonListener(`clearApiKey${playerNum}`, () => this.clearApiKey(playerNum));
+        });
+    }
 
    setupPlayerTypeChangeHandlers() {
        ['1', '2'].forEach(playerNum => {
            const select = document.getElementById(`playerType${playerNum}`);
             
-           // Remove existing event listeners by cloning and replacing the element
-           const newSelect = select.cloneNode(false);
+           // Create a new select element and copy all options
+           const newSelect = select.cloneNode(true); // Use deep clone to include all child elements
            select.parentNode.replaceChild(newSelect, select);
            newSelect.value = select.value; // Preserve the current value
             
