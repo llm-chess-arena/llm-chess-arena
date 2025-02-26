@@ -324,64 +324,14 @@ Respond in the required JSON format with your move and reasoning.
 }
 
 class ChessProviderFactory {
-    static PROVIDERS = {
-        'groq': {
-            displayName: 'Groq',
-            models: {
-                'llama-3.3-70b-versatile': {
-                    displayName: 'LLaMa 3.3 70B Versatile',
-                    tempRange: { min: 0.1, max: 1.0 }
-                },
-                'llama-3.3-70b-specdec': {
-                    displayName: 'LLaMa 3.3 70B SpecDec',
-                    tempRange: { min: 0.1, max: 1.0 }
-                }
-            }
-        },
-        'openai': {
-            displayName: 'OpenAI',
-            models: {
-                'gpt-4': {
-                    displayName: 'GPT-4',
-                    tempRange: { min: 0.1, max: 1.0 }
-                }
-            }
-        },
-        'gemini': {
-            displayName: 'Google Gemini',
-            models: {
-                'gemini-2.0-flash-exp': {
-                    displayName: 'Gemini Pro',
-                    tempRange: { min: 0.1, max: 1.0 }
-                }
-            }
-        },
-        'grok': {
-            displayName: 'xAI Grok',
-            models: {
-                'grok-beta': {
-                    displayName: 'Grok Beta',
-                    tempRange: { min: 0.1, max: 1.0 }
-                }
-            }
-        },
-        'openrouter': {
-            displayName: 'OpenRouter',
-            models: {
-                'anthropic/claude-3-opus:beta': {
-                    displayName: 'Claude 3 Opus',
-                    tempRange: { min: 0.1, max: 1.0 }
-                },
-                'anthropic/claude-3-sonnet': {
-                    displayName: 'Claude 3 Sonnet',
-                    tempRange: { min: 0.1, max: 1.0 }
-                },
-                'meta-llama/llama-3-70b-instruct': {
-                    displayName: 'Llama 3 70B',
-                    tempRange: { min: 0.1, max: 1.0 }
-                }
-            }
+    // Use the external configuration file
+    static get PROVIDERS() {
+        // In a browser context
+        if (typeof PROVIDERS_CONFIG !== 'undefined') {
+            return PROVIDERS_CONFIG;
         }
+        // Fallback to empty config if external file not loaded
+        return {};
     }
 
     static getProviders() {
