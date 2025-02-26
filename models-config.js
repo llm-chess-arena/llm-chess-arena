@@ -124,5 +124,7 @@ if (typeof module !== 'undefined') {
 
 // Make available globally for browser
 if (typeof window !== 'undefined') {
+    window.PROVIDERS_CONFIG = PROVIDER_CONFIG;
+    // Also provide as PROVIDER_CONFIG for potential compatibility
     window.PROVIDER_CONFIG = PROVIDER_CONFIG;
 }

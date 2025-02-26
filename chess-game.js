@@ -326,19 +326,28 @@ Respond in the required JSON format with your move and reasoning.
 class ChessProviderFactory {
     // Use the external configuration file
     static get PROVIDERS() {
-        // In a browser context
+        console.log("Checking for PROVIDERS_CONFIG:", typeof PROVIDERS_CONFIG);
         if (typeof PROVIDERS_CONFIG !== 'undefined') {
+            console.log("PROVIDERS_CONFIG found:", PROVIDERS_CONFIG);
             return PROVIDERS_CONFIG;
         }
+        // Check if we have the PROVIDER_CONFIG variable instead (without the S)
+        if (typeof PROVIDER_CONFIG !== 'undefined') {
+            console.log("PROVIDER_CONFIG found:", PROVIDER_CONFIG);
+            return PROVIDER_CONFIG;
+        }
         // Fallback to empty config if external file not loaded
+        console.log("No config found, returning empty object");
         return {};
     }
 
     static getProviders() {
-        return Object.keys(this.PROVIDERS).map(key => ({
+        const providers = Object.keys(this.PROVIDERS).map(key => ({
             id: key,
             name: this.PROVIDERS[key].displayName
         }));
+        console.log("Provider list:", providers);
+        return providers;
     }
 
     static getModelsByProvider(providerId) {
