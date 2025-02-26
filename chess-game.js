@@ -443,6 +443,7 @@ class ChessGame {
        this.initializeBoard();
        this.initializeControls();
        this.populateProviderDropdowns();
+       this.setupPlayerTypeChangeHandlers();
        this.loadSettings();
        this.loadSavedApiKeys();
        ['1', '2'].forEach(playerNum => this.updateApiKeyButtons(playerNum));
@@ -597,7 +598,9 @@ class ChessGame {
 
    populateProviderDropdowns() {
        const providers = ChessProviderFactory.getProviders();
+       console.log("Providers:", providers);
        ['1', '2'].forEach(playerNum => {
+           console.log(`Populating provider${playerNum} dropdown`);
            const select = document.getElementById(`provider${playerNum}`);
            select.innerHTML = '';
            select.appendChild(new Option('Select Provider', ''));
@@ -698,11 +701,28 @@ class ChessGame {
        });
    }
 
+   setupPlayerTypeChangeHandlers() {
+       ['1', '2'].forEach(playerNum => {
+           document.getElementById(`playerType${playerNum}`).addEventListener('change', () => {
+               const playerType = document.getElementById(`playerType${playerNum}`).value;
+               const aiSettings = document.getElementById(`aiSettings${playerNum}`);
+               aiSettings.style.display = playerType === 'ai' ? 'block' : 'none';
+           });
+       });
+   }
+
    updatePlayerControls() {
        ['1', '2'].forEach(player => {
            const playerType = document.getElementById(`playerType${player}`).value;
            const aiSettings = document.getElementById(`aiSettings${player}`);
            aiSettings.style.display = playerType === 'ai' ? 'block' : 'none';
+           
+           // If playerType is 'ai', show model group only if provider is selected
+           if (playerType === 'ai') {
+               const providerId = document.getElementById(`provider${player}`).value;
+               document.getElementById(`modelGroup${player}`).style.display = providerId ? 'block' : 'none';
+               document.getElementById(`apiKeyGroup${player}`).style.display = providerId ? 'block' : 'none';
+           }
        });
 
        const currentPlayerNum = this.currentPlayer === 'white' ? '1' : '2';
