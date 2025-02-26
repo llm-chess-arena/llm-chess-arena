@@ -5,7 +5,7 @@
  * You can easily add or modify models by editing this file.
  */
 
-const PROVIDERS_CONFIG = {
+const PROVIDER_CONFIG = {
     'groq': {
         displayName: 'Groq',
         models: {
@@ -119,5 +119,5 @@ const PROVIDERS_CONFIG = {
 
 // Export the configuration
 if (typeof module !== 'undefined') {
-    module.exports = { PROVIDERS_CONFIG };
+    module.exports = { PROVIDER_CONFIG };
 }

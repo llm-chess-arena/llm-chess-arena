@@ -583,13 +583,20 @@ class ChessGame {
    populateModelDropdown(playerNum, providerId) {
        const models = ChessProviderFactory.getModelsByProvider(providerId);
        const select = document.getElementById(`model${playerNum}`);
-       select.innerHTML = '';
-       select.appendChild(new Option('Select Model', ''));
+       
+       // Remove existing event listeners by cloning and replacing the element
+       const newSelect = select.cloneNode(false);
+       select.parentNode.replaceChild(newSelect, select);
+       
+       // Populate the dropdown
+       newSelect.innerHTML = '';
+       newSelect.appendChild(new Option('Select Model', ''));
        models.forEach(model => {
-           select.appendChild(new Option(model.name, model.id));
+           newSelect.appendChild(new Option(model.name, model.id));
        });
        
-       select.addEventListener('change', (e) => {
+       // Add change event listener
+       newSelect.addEventListener('change', (e) => {
            if (e.target.value) {
                this.updateTempRange(playerNum, providerId, e.target.value);
            }
@@ -653,31 +660,34 @@ class ChessGame {
 
    setupPlayerTypeChangeHandlers() {
        ['1', '2'].forEach(playerNum => {
-           document.getElementById(`playerType${playerNum}`).addEventListener('change', () => {
-               const playerType = document.getElementById(`playerType${playerNum}`).value;
+           const select = document.getElementById(`playerType${playerNum}`);
+            
+           // Remove existing event listeners by cloning and replacing the element
+           const newSelect = select.cloneNode(false);
+           select.parentNode.replaceChild(newSelect, select);
+           newSelect.value = select.value; // Preserve the current value
+            
+           // Add new event listener
+           newSelect.addEventListener('change', () => {
+               const isAI = newSelect.value === 'ai';
                const aiSettings = document.getElementById(`aiSettings${playerNum}`);
-               aiSettings.style.display = playerType === 'ai' ? 'block' : 'none';
+               aiSettings.style.display = isAI ? 'block' : 'none';
+                
+               if (isAI) {
+                   // Make sure provider dropdown is visible
+                   console.log(`Player ${playerNum} changed to AI, showing provider dropdown`);
+                   
+                   // Reset provider dropdown if needed
+                   const providerSelect = document.getElementById(`provider${playerNum}`);
+                   if (!providerSelect.value) {
+                       this.populateProviderDropdowns();
+                   }
+               }
+                
+               this.saveSettings();
+               this.updatePlayerControls();
            });
        });
-   }
-
-   updatePlayerControls() {
-       ['1', '2'].forEach(player => {
-           const playerType = document.getElementById(`playerType${player}`).value;
-           const aiSettings = document.getElementById(`aiSettings${player}`);
-           aiSettings.style.display = playerType === 'ai' ? 'block' : 'none';
-           
-           // If playerType is 'ai', show model group only if provider is selected
-           if (playerType === 'ai') {
-               const providerId = document.getElementById(`provider${player}`).value;
-               document.getElementById(`modelGroup${player}`).style.display = providerId ? 'block' : 'none';
-               document.getElementById(`apiKeyGroup${player}`).style.display = providerId ? 'block' : 'none';
-           }
-       });
-
-       const currentPlayerNum = this.currentPlayer === 'white' ? '1' : '2';
-       const currentPlayerType = document.getElementById(`playerType${currentPlayerNum}`).value;
-       document.getElementById('stepBtn').disabled = currentPlayerType !== 'ai' || this.game.game_over();
    }
 
    loadSettings() {
@@ -696,13 +706,12 @@ class ChessGame {
 
    loadSavedApiKeys() {
        ['1', '2'].forEach(playerNum => {
-           const modelSelect = document.getElementById(`model${playerNum}`);
-           const provider = ChessProviderFactory.getProviders().find(provider => provider.id === modelSelect.value.split('.')[0]);
-           if (provider) {
-               const savedKey = provider ? localStorage.getItem(`${provider.id}_api_key`) : null;
+           const providerId = document.getElementById(`provider${playerNum}`).value;
+           if (providerId) {
+               const savedKey = localStorage.getItem(`${providerId}_api_key`);
                if (savedKey) {
                    document.getElementById(`apiKey${playerNum}`).value = savedKey;
-                   this.logDebug(`Loaded saved API key for ${provider.id}`);
+                   this.logDebug(`Loaded saved API key for ${providerId}`);
                }
            }
        });
