@@ -121,3 +121,8 @@ const PROVIDER_CONFIG = {
 if (typeof module !== 'undefined') {
     module.exports = { PROVIDER_CONFIG };
 }
+
+// Make available globally for browser
+if (typeof window !== 'undefined') {
+    window.PROVIDER_CONFIG = PROVIDER_CONFIG;
+}

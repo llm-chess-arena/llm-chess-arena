@@ -701,6 +701,16 @@ class ChessGame {
                }
            }
        });
+
+       // Update temperature ranges for saved models
+       ['1', '2'].forEach(playerNum => {
+           const providerId = document.getElementById(`provider${playerNum}`).value;
+           const modelId = document.getElementById(`model${playerNum}`).value;
+           if (providerId && modelId) {
+               this.updateTempRange(playerNum, providerId, modelId);
+           }
+       });
+        
        this.updatePlayerControls();
    }
 
@@ -730,6 +740,25 @@ class ChessGame {
        };
        localStorage.setItem('chessSettings', JSON.stringify(settings));
        this.updatePlayerControls();
+   }
+
+   updatePlayerControls() {
+       ['1', '2'].forEach(player => {
+           const playerType = document.getElementById(`playerType${player}`).value;
+           const aiSettings = document.getElementById(`aiSettings${player}`);
+           aiSettings.style.display = playerType === 'ai' ? 'block' : 'none';
+            
+           // If playerType is 'ai', show model group only if provider is selected
+           if (playerType === 'ai') {
+               const providerId = document.getElementById(`provider${player}`).value;
+               document.getElementById(`modelGroup${player}`).style.display = providerId ? 'block' : 'none';
+               document.getElementById(`apiKeyGroup${player}`).style.display = providerId ? 'block' : 'none';
+           }
+       });
+
+       const currentPlayerNum = this.currentPlayer === 'white' ? '1' : '2';
+       const currentPlayerType = document.getElementById(`playerType${currentPlayerNum}`).value;
+       document.getElementById('stepBtn').disabled = currentPlayerType !== 'ai' || this.game.game_over();
    }
 
    async makeMove() {
