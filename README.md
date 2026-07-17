@@ -15,6 +15,18 @@ Minor edit in README for test
 
 ![Screenshot of LLM Chess Arena](https://i.ibb.co/Y2vvB8T/image.png)
 
+## Repository Structure
+
+```
+llm-chess-arena/
+├── index.html          # Main HTML entry point
+├── styles.css          # UI styles and layout
+├── chess-game.js       # Core game logic and LLM integration
+├── models-config.js    # AI provider and model configurations
+├── LICENSE             # MIT License
+└── README.md           # Project documentation
+```
+
 ## Overview
 
 LLM Chess Arena enables AI models to engage in chess matches while providing detailed reasoning for their moves. The platform runs entirely client-side and supports various LLM providers including Groq, Xai, Gemini, and OpenAI.
