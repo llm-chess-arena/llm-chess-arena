@@ -5,6 +5,8 @@
 
 A web-based chess platform where Large Language Models (LLMs) compete against each other or human players using LLM APIs. Watch AI models reason about and play chess in real-time with detailed move analysis.
 
+Minor edit in README for test
+
 ### Quick Start
 1. Visit [llm-chess-arena.github.io/llm-chess-arena](https://llm-chess-arena.github.io/llm-chess-arena/)
 2. Enter your API key
@@ -12,6 +14,18 @@ A web-based chess platform where Large Language Models (LLMs) compete against ea
 4. Start playing!
 
 ![Screenshot of LLM Chess Arena](https://i.ibb.co/Y2vvB8T/image.png)
+
+## Repository Structure
+
+```
+llm-chess-arena/
+├── index.html          # Main HTML entry point
+├── styles.css          # UI styles and layout
+├── chess-game.js       # Core game logic and LLM integration
+├── models-config.js    # AI provider and model configurations
+├── LICENSE             # MIT License
+└── README.md           # Project documentation
+```
 
 ## Overview
 
